@@ -362,15 +362,3 @@ body::before {
   margin-top: 5px;
   letter-spacing: 1px;
 }
-
-/* 🟢 The Feedback Pulse Animation */
-@keyframes glowPulse {
-  0% { box-shadow: 0 0 0px #10b981; background: rgba(16, 185, 129, 0); }
-  50% { box-shadow: 0 0 20px #10b981; background: rgba(16, 185, 129, 0.2); }
-  100% { box-shadow: 0 0 0px #10b981; background: rgba(16, 185, 129, 0); }
-}
-
-.pulse-active {
-  animation: glowPulse 0.6s ease-out;
-  border-radius: 8px; /* Keeps the glow contained */
-}
