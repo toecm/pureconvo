@@ -164,6 +164,14 @@ function App() {
 
     } catch (error) { setStatus("UPLOAD ERROR"); }
   };
+  
+  const copyIDToClipboard = () => {
+    if (userKey) {
+      navigator.clipboard.writeText(userKey);
+      setStatus("📋 ID COPIED!");
+      setTimeout(() => setStatus("IDLE"), 2000);
+    }
+  };
 
   // --- 5. RENDER ---
   if (!consentStatus) return (
@@ -253,7 +261,17 @@ function App() {
               </button>
             </>
           )}
-          <div className="id-footer">OPERATOR: {address.slice(0,6)}...</div>
+          <div 
+  	    className="id-footer" 
+  	    onClick={copyIDToClipboard} 
+  	    style={{ display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer' }}
+  	    title="Click to copy full Session ID"
+	  >
+  	    <div>OPERATOR: {address.slice(0, 6)}...{address.slice(-4)}</div>
+  	    <div style={{ fontSize: '10px', opacity: 0.6 }}>
+   	      SESSION ID: {userKey ? userKey.split('_')[1] + "..." + userKey.slice(-4) : "GENERATING..."}
+  	    </div>
+	  </div>
         </div>
       </div>
     </div>
