@@ -268,9 +268,16 @@ function App() {
             </>
           )}
           <div 
-  	    className="id-footer" 
+  	    className={`id-footer ${isPulsing ? 'pulse-active' : ''}`} // 🟢 Dynamic Class
   	    onClick={copyIDToClipboard} 
-  	    style={{ display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer' }}
+  	    style={{ 
+    	      display: 'flex', 
+    	      flexDirection: 'column', 
+   	      gap: '5px', 
+   	      cursor: 'pointer',
+    	      padding: '5px', // Gives the glow a bit of room
+    	      transition: 'all 0.3s ease'
+  	    }}
   	    title="Click to copy full Session ID"
 	  >
   	    <div>OPERATOR: {address.slice(0, 6)}...{address.slice(-4)}</div>
