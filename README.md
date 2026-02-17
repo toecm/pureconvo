@@ -53,3 +53,15 @@ PureConvo runs on a **Split-Agent Architecture**:
 * Python 3.9+
 * Hugging Face Account (for storage)
 * Google Gemini API Key
+
+---
+
+## 🛡️ Privacy & Ethics
+Anonymous: No personally identifiable information (PII) is linked to voice data.
+
+Consent: All data is contributed voluntarily via gameplay.
+
+Open Source: We believe in democratizing language AI.
+
+📄 License
+This project is licensed under the Apache 2.0 License - see the LICENSE file for details.
