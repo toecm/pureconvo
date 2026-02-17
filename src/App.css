@@ -1,364 +1,553 @@
-/* --- APP.CSS: Premium Glassy Game HUD --- */
-
-/* Import a Tech Font for that "Sci-Fi" look */
+/* --- APP.CSS: Compact Mobile HUD --- */
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap');
 
-/* 1. Global Reset & Animated Background */
+/* 1. Global Reset & Background */
+/* =========================================
+   1. RESPONSIVE CONTAINER SETUP
+   ========================================= */
+:root {
+    --app-max-width: 480px; /* Standard Mobile Width */
+    --app-bg: #0f172a;
+    --desktop-bg: #1e293b;
+}
+
 body {
-  background: radial-gradient(circle at 50% 10%, #1e1b4b, #0f172a 80%);
-  background-attachment: fixed;
-  font-family: 'Rajdhani', sans-serif;
-  color: #e2e8f0;
-  margin: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    background-color: var(--desktop-bg); /* Darker background for desktop margins */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden; /* Prevent double scrollbars */
 }
 
-/* Subtle moving grid background effect */
-body::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; width: 200%; height: 200%;
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.5;
-  z-index: -1;
-  animation: moveGrid 60s linear infinite;
+/* The Main App Container */
+.App {
+    width: 100%;
+    height: 100vh;
+    background-color: var(--app-bg); /* This is dark (#0f172a) */
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    
+    /* 🟢 GLOBAL TEXT FIX: Default to light text on dark bg */
+    color: #f8fafc; /* Slate-50 (Near White) */
 }
 
-@keyframes moveGrid {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(-40px, -40px); }
+/* 🟢 SPECIFIC GREETING FIX */
+.greeting-text, h1, h2, h3 {
+    color: #f1f5f9; /* Slate-100 (Bright White) */
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5); /* Subtle shadow for pop */
 }
 
-.game-wrapper {
-  width: 100%;
-  padding: 20px;
-  display: flex;
-  justify-content: center;
-  box-sizing: border-box;
+.home-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* 🟢 FIX 1: Allow the layout itself to scroll if needed */
+    overflow-y: auto; 
+    padding: 20px;
+    box-sizing: border-box;
 }
 
-/* 2. THE MAIN GLASS CONTAINER */
-.game-container {
-  width: 100%;
-  max-width: 420px;
-  
-  /* The "Frosted Glass" Magic */
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  
-  /* 3D Glass Borders */
-  border-radius: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  border-right: 1px solid rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
-  
-  padding: 24px;
+/* Optional: Make the scrollbar look nice on laptops */
+.home-layout::-webkit-scrollbar {
+    width: 8px;
+}
+.home-layout::-webkit-scrollbar-track {
+    background: #0f172a; 
+}
+.home-layout::-webkit-scrollbar-thumb {
+    background: #334155; 
+    border-radius: 4px;
+}
+.home-layout::-webkit-scrollbar-thumb:hover {
+    background: #475569; 
+}
+
+/* 🟢 SMART COLOR ADAPTATION (Optional) */
+/* If you ever switch to a light theme, this handles it automatically */
+@media (prefers-color-scheme: light) {
+    /* Only apply dark text if the BACKGROUND actually flips to light */
+    .App.light-mode {
+        color: #0f172a; 
+    }
+}
+
+/* 🟢 DESKTOP/TABLET TWEAKS */
+@media (min-width: 768px) {
+    .App {
+        max-width: var(--app-max-width); /* Lock width on large screens */
+        height: 95vh; /* Slight gap on top/bottom for aesthetic */
+        max-height: 900px;
+        border-radius: 20px; /* Rounded corners like a phone */
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5); /* Nice shadow */
+        border: 1px solid #334155;
+    }
+}
+
+/* Ensure Game Layouts Fill Space */
+.game-layout {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* 2. Main Container */
+.cyber-container {
+  width: 90%;
+  max-width: 400px; 
+  background: rgba(15, 23, 42, 0.85); /* Darker for better contrast */
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 15px; 
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  
-  /* Neon Glow Shadow */
-  box-shadow: 
-    0 20px 50px -10px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(79, 70, 229, 0.15);
-    
+  gap: 10px; 
   position: relative;
-  z-index: 10;
+  overflow: hidden;
 }
 
-/* --- 3. HUD HEADER (Stats) --- */
-.hud-header {
+/* 3. Header */
+.hud-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.xp-badge { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 5px 10px; border-radius: 8px; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.9em; }
+.status-badge { font-family: monospace; color: #94a3b8; font-size: 0.8em; letter-spacing: 1px; }
+
+/* 4. Mission Card - UPDATED FOR DOODLE */
+.mission-card {
+  position: relative;
+  background: #f8fafc; /* Paper-like background for the sketch */
+  border: 2px solid #cbd5e1;
+  padding: 0; /* Remove padding to let image fill */
+  border-radius: 12px;
+  overflow: hidden;
+  height: 80px; /* Fixed height for consistency */
+  display: flex;
+  align-items: center;
+}
+
+/* 🟢 The "Doodle" Layer */
+.doodle-bg {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.4; /* Faint sketch look */
+  filter: grayscale(100%) contrast(150%) brightness(1.1); /* Make it look like a pencil sketch */
+}
+
+/* 🟢 The Text Overlay */
+.mission-content-overlay {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 15px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 8px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.level-badge {
-  background: linear-gradient(135deg, #f59e0b, #b45309);
-  width: 50px;
-  height: 50px;
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.lvl-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.7); letter-spacing: 1px; }
-.lvl-val { font-size: 22px; font-weight: 800; line-height: 1; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-
-.xp-bar-container {
-  flex: 1;
-  background: rgba(0, 0, 0, 0.4);
-  height: 12px;
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
-}
-
-.xp-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #a855f7);
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
-  border-radius: 6px;
-  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy transition */
-}
-
-/* --- 4. MISSION CARD (IMAGE UPDATE) --- */
-.mission-card {
-  /* Default background if image loads slow */
-  background-color: #0f172a; 
-  background-size: cover;
-  background-position: center;
-  border-radius: 20px;
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  min-height: 220px; /* Force height for image */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end; /* Push text to bottom */
-}
-
-/* Dark Gradient Overlay */
-.mission-overlay {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.95));
-  z-index: 1;
-}
-
-/* Content Container */
-.mission-content {
-  position: relative;
-  z-index: 2; /* Sit on top of overlay */
-  padding: 20px;
-}
-
-.mission-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.mission-emoji { 
-  font-size: 24px; 
-  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-}
-
-.mission-ctx {
-  font-size: 10px;
-  font-weight: 800;
-  color: #6ee7b7;
-  letter-spacing: 2px;
-  background: rgba(0,0,0,0.6);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(110, 231, 183, 0.3);
-}
-
-.mission-target {
-  font-size: 22px;
-  font-weight: 700;
-  color: white;
-  line-height: 1.2;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-  margin-bottom: 4px;
-}
-
-.mission-sub {
-  font-size: 12px;
-  color: rgba(255,255,255,0.8);
-  font-style: italic;
-}
-/* --- 5. CONTROLS --- */
-.controls-area {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.control-row { display: flex; gap: 12px; }
-
-/* Glassy Inputs */
-.cyber-select, .cyber-input {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  color: #f1f5f9;
-  padding: 14px 16px;
-  border-radius: 14px;
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 600;
-  font-size: 16px;
+  padding: 10px 15px;
   width: 100%;
-  outline: none;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(5px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
 }
 
-.cyber-select:focus, .cyber-input:focus {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: #818cf8;
-  box-shadow: 0 0 15px rgba(129, 140, 248, 0.3);
+.mission-icon { font-size: 28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
+.mission-content-overlay h3 { margin: 0; font-size: 10px; color: #64748b; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 800; }
+.mission-content-overlay p { margin: 2px 0 0 0; font-size: 14px; font-weight: 700; color: #1e293b; line-height: 1.1; }
+/* 5. Inputs & Controls */
+.control-panel { display: flex; flex-direction: column; gap: 8px; }
+
+.dialect-selector { text-align: center; }
+.dialect-selector label { display: block; font-size: 10px; color: #64748b; margin-bottom: 3px; letter-spacing: 1px; }
+select {
+  width: 100%; background: #0f172a; color: white; border: 1px solid #334155;
+  padding: 8px; border-radius: 8px; font-family: inherit; font-size: 14px; text-align: center;
 }
 
-.cyber-select option { background: #0f172a; color: white; }
-
-/* --- 6. RECORD BUTTON (The Star) --- */
-.record-area {
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-}
-
+/* 6. Record Button - COMPACT SIZE FIX */
 .record-btn {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  
-  /* Metallic Gradient */
-  background: radial-gradient(circle at 30% 30%, #334155, #0f172a);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
-    inset 0 4px 10px rgba(255,255,255,0.1), /* Inner highlight */
-    0 10px 30px rgba(0,0,0,0.5), /* Drop shadow */
-    0 0 0 5px rgba(15, 23, 42, 0.5); /* Outer ring */
-    
-  color: #94a3b8;
+  width: 100%;
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 12px; /* Reduced from 20px+ */
+  border-radius: 12px;
   font-family: 'Rajdhani', sans-serif;
+  font-size: 16px; /* Reduced font size */
   font-weight: 700;
-  font-size: 16px;
   letter-spacing: 1px;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  position: relative;
-  z-index: 2;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  transition: all 0.2s ease;
+  margin-top: 5px;
 }
+.record-btn:active { transform: scale(0.98); }
+.record-btn.pulsing { animation: pulseRed 1.5s infinite; background: #dc2626; }
+@keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
-.record-btn:active {
-  transform: scale(0.92);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-  background: #0f172a;
-}
-
-/* Recording State (Active) */
-.record-btn.recording {
-  border-color: #ef4444;
-  color: #fca5a5;
-  background: radial-gradient(circle, #450a0a, #1a0505);
-  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
-}
-
-/* Pulsing Ring Animation when recording */
-.pulse-ring {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  border: 2px solid #ef4444;
-  opacity: 0;
-  z-index: -1;
-  animation: radar 1.5s infinite ease-out;
-}
-
-@keyframes radar {
-  0% { width: 100%; height: 100%; opacity: 0.8; }
-  100% { width: 160%; height: 160%; opacity: 0; }
-}
-
-/* Audio Player */
-.audio-preview audio {
-  width: 100%;
-  height: 36px;
-  margin-top: 10px;
-  border-radius: 18px;
-  filter: invert(90%) hue-rotate(180deg); /* Dark mode audio player hack */
-  opacity: 0.8;
-}
-
-/* --- 7. TRANSMIT BUTTON --- */
+/* 7. Action Button (Analyze/Mint) */
 .cyber-button {
   width: 100%;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-  color: white;
-  border: none;
-  padding: 18px;
-  border-radius: 16px;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
-  transition: all 0.3s ease;
-  margin-top: 10px;
+  color: white; border: none;
+  padding: 12px; /* Reduced */
+  border-radius: 12px;
+  font-family: inherit; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+  cursor: pointer; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+}
+.cyber-button:disabled { background: #334155; box-shadow: none; opacity: 0.5; cursor: not-allowed; }
+
+/* 8. Audio Players & Textareas */
+.audio-preview audio { width: 100%; height: 32px; margin-top: 5px; border-radius: 5px; } /* Slim player */
+.input-group label { font-size: 10px; color: #94a3b8; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+textarea { 
+  width: 95%; background: rgba(0,0,0,0.3); border: 1px solid #334155; 
+  color: white; padding: 8px; border-radius: 8px; font-family: inherit; 
+  resize: none; height: 40px; font-size: 13px; /* Smaller text inputs */
 }
 
-.cyber-button::before {
-  content: "";
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  transform: skewX(-20deg);
-  transition: left 0.5s;
-}
-
-.cyber-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.6);
-}
-
-.cyber-button:hover::before {
-  left: 200%;
-}
-
-.cyber-button:disabled {
-  background: #334155;
-  color: #64748b;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
-
-/* Success State */
-.cyber-button.SUCCESS {
-  background: linear-gradient(135deg, #059669, #10b981);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
-}
-
+/* 9. Footer */
 .id-footer {
-  text-align: center;
-  font-size: 12px;
-  color: rgba(148, 163, 184, 0.6);
-  font-family: monospace;
-  margin-top: 5px;
-  letter-spacing: 1px;
+  margin-top: 5px; text-align: center; font-family: monospace; color: #475569; font-size: 0.75em;
+  padding: 8px; border-top: 1px solid rgba(255,255,255,0.05); transition: color 0.3s;
 }
+.id-footer:hover { color: #94a3b8; }
+.pulse-active { color: #34d399 !important; text-shadow: 0 0 8px rgba(52, 211, 153, 0.6); }
+
+/* Review Mode Specifics */
+.action-row { display: flex; gap: 10px; margin-top: 5px; }
+.cancel-btn { background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 8px; padding: 0 20px; cursor: pointer; font-family: inherit; font-weight: 600; }
+
+/* --- VISION MODE (Clean Layout) --- */
+.vision-mode-container {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.vision-image {
+    width: 100%;
+    height: 180px; /* Big clear image */
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid #334155;
+}
+
+.vision-text-block {
+    padding: 15px;
+    text-align: center;
+}
+
+.vision-text-block h3 {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #94a3b8;
+}
+
+.vision-text-block .subtext {
+    margin: 2px 0 5px 0;
+    font-size: 11px;
+    color: #38bdf8;
+    font-family: 'Rajdhani', sans-serif;
+}
+
+.vision-text-block .main-text {
+    margin: 0;
+    font-size: 15px;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* --- NEW HOME MENU STYLES --- */
+
+/* The "Select Game Mode" Instruction */
+.instruction-zone {
+    text-align: center;
+    margin: 20px 0 15px 0;
+    opacity: 0.8;
+}
+
+.instruction-zone p {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+.instruction-line {
+    width: 40px;
+    height: 2px;
+    background: #334155;
+    margin: 8px auto 0 auto;
+    border-radius: 2px;
+}
+
+/* The Big Icons */
+.icon-large {
+    font-size: 48px; /* Big Icon */
+    margin-bottom: 10px;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
+}
+
+/* Update Menu Card for centered layout */
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 25px 15px; /* Taller card */
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid #334155;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.menu-card h3 {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #e2e8f0;
+    margin-top: 5px;
+}
+
+/* Hover Effects */
+.menu-card:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: #38bdf8;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+}
+
+.menu-card:hover .icon-large {
+    transform: scale(1.2) rotate(-5deg); /* Pop effect */
+    filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.4));
+}
+
+/* Highlight (Speed Chat) specific glow */
+.menu-card.highlight:hover {
+    border-color: #34d399;
+}
+.menu-card.highlight:hover .icon-large {
+    filter: drop-shadow(0 0 20px rgba(52, 211, 153, 0.4));
+}
+
+/* --- GAME 4: LISTENER MODE --- */
+
+.listener-mode {
+    background: #0f172a;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;       /* 🟢 Force full screen height */
+    overflow: hidden;    /* 🟢 Prevent outer page scroll */
+}
+
+.listener-header {
+    flex-shrink: 0; /* Don't shrink */
+    padding: 10px 15px; /* Reduced vertical padding */
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #22c55e;
+}
+
+.chat-log {
+    flex: 1;                 /* 🟢 Take up all available space between Header and Controls */
+    overflow-y: auto;        /* 🟢 Activate scrollbar ONLY here */    
+    padding: 10px 20px; /* Reduced top padding */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    
+    /* Scrollbar Styling (Optional but nice) */
+    scrollbar-width: thin;
+    scrollbar-color: #38bdf8 transparent;
+
+
+    /* 🟢 NEW: Ensures smooth scrolling physics */
+    scroll-behavior: smooth;
+}
+
+/* Optional: Tweaks to make the input bar feel more integrated */
+.listener-controls {
+    flex-shrink: 0; /* Don't shrink */
+    padding: 20px;
+    background: #1e293b;
+    border-top: 1px solid #334155;    /* 🟢 NEW: subtle shadow to separate input from chat */
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2); 
+    z-index: 10;
+}
+
+/* 2. The Flexible Bubbles */
+.chat-bubble {
+    max-width: 80%;          /* 🟢 Stop at 80% of screen width */
+    width: fit-content;      /* 🟢 Wrap tightly around short text */
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.5;
+    
+    /* 🟢 CRITICAL: Force long text to wrap onto new lines */
+    word-wrap: break-word;   
+    overflow-wrap: break-word;
+    
+    animation: popIn 0.3s ease;
+}
+
+/* AI Bubble (Left) */
+.chat-bubble.ai {
+    align-self: flex-start;
+    background: #1e293b;
+    border-top-left-radius: 2px;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+}
+
+/* User Bubble (Right) */
+.chat-bubble.user {
+    align-self: flex-end;
+    background: #0ea5e9;
+    border-top-right-radius: 2px;
+    color: white;
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.2);
+}
+
+/* 3. The Input Area (Fixed at Bottom) */
+.listener-controls {
+    flex-shrink: 0;          /* 🟢 Never shrink this area */
+    padding: 20px;
+    background: #1e293b;
+    border-top: 1px solid #334155;
+    z-index: 10;
+}
+
+/* Verify Card Style */
+.verify-card {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #38bdf8;
+}
+
+.verify-row {
+    margin-bottom: 10px;
+}
+
+.verify-row label {
+    font-size: 10px;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.verify-row input {
+    width: 100%;
+    background: #1e293b;
+    border: 1px solid #475569;
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.ai-text {
+    color: #34d399; /* Green text for AI clarification */
+    font-style: italic;
+}
+
+.verify-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.confirm-btn {
+    flex: 1;
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+.reject-btn {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- SETUP SCREEN STYLES --- */
+
+.setup-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    background: #0f172a;
+    animation: fadeIn 0.5s ease;
+}
+
+.setup-row {
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 20px;
+}
+
+.setup-row label {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.setup-row select {
+    width: 100%;
+    padding: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: white;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+}
+
+.setup-row input[type="range"] {
+    width: 100%;
+    accent-color: #38bdf8;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
