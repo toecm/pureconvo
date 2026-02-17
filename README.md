@@ -53,34 +53,3 @@ PureConvo runs on a **Split-Agent Architecture**:
 * Python 3.9+
 * Hugging Face Account (for storage)
 * Google Gemini API Key
-
-### 1. Frontend Setup
-```bash
-cd pure-app
-npm install
-npm start
-
-### 2. Backend Setup
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-
-🛡️ Privacy & Ethics
-Anonymous: No personally identifiable information (PII) is linked to voice data.
-
-Consent: All data is contributed voluntarily via gameplay.
-
-Open Source: We believe in democratizing language AI.
-
-📄 License
-This project is licensed under the Apache 2.0 License - see the LICENSE file for details.
-
-
-### **Step 3: Push to GitHub**
-Run these commands to save and upload it:
-
-```bash
-git add README.md
-git commit -m "Add project documentation"
-git push origin main
