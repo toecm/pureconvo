@@ -63,5 +63,7 @@ Consent: All data is contributed voluntarily via gameplay.
 
 Open Source: We believe in democratizing language AI.
 
-📄 License
-This project is licensed under the Apache 2.0 License - see the LICENSE file for details.
+---
+
+## 📄 License
+This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
