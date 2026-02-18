@@ -53,14 +53,12 @@ const GAME_ASSETS = {
 // --- CONFIGURATION ---
 const SPACE_URL = "https://toecm-pureconvo.hf.space"; 
 const FALLBACK_DIALECTS = [
-    "African American Vernacular English", 
-    "American English", 
-    "Indian English", 
-    "Nigerian English", 
-    "Nigerian Pidgin English", 
+    "African American Vernacular English", "American English", 
+    "Indian English", "Nigerian English", "Nigerian Pidgin English", 
     "+ Add New Dialect"
 ];
 const TONES = ["Neutral / Conversational", "Casual / Slang", "Formal / Professional", "Proverb / Idiom"];
+const TOPIC_SUGGESTIONS = ["Traffic", "Food", "Weather", "Family", "Work", "Politics", "Football", "Music"];
 
 // ==========================================
 // 📺 TUTORIAL MODAL (Video + Instructions)
@@ -125,13 +123,13 @@ function GameTutorial({ gameKey, onStart, onCancel }) {
 }
 
 // --- GREETINGS & PRIVACY ---
-const NEW_GREETINGS = ["Hello!", "Hi there!", "Greetings!", "Ready?", "Salutations!", "Welcome!"];
-const RETURNING_GREETINGS = ["Welcome back!", "Good to see you again!", "Ready for another round?", "Hello again!", "Back for more?", "Resuming session!"];
+const NEW_GREETINGS = ["Hello!", "Hi there!", "Greetings!", "What's up?", "How far?", "Welcome!", "Hey..."];
+const RETURNING_GREETINGS = ["Welcome back!", "Good to see you again!", "Ready for another round?", "Hello again!", "Back for more?", "I remember you!"];
 const PRIVACY_STATEMENTS = [
-    "Rest easy—we collect sounds, not names.", 
+    "Rest easy. We collect sounds, not names.", 
     "Your voice is a contribution; your identity is your own.",
     "Encrypted, anonymous, and essential.", 
-    "No profiles, no tracking. Just your unique voice.",
+    "No profiles, no tracking. Just your linguistic contribution.",
     "Powering the future of linguistics, one anonymous clip at a time.", 
     "Speak your mind. We’ll keep the secret."
 ];
@@ -197,7 +195,7 @@ function App() {
                     return !lower.includes('.json') && 
                            !lower.includes('config') && 
                            !lower.includes('metadata') &&
-                           !lower.endsWith('persona'); // 🟢 BLOCKS "NaijaPidginPersona"
+                           !lower.endsWith('persona'); // 🟢 BLOCKS "Nigerian Pidgin English Persona"
                 });
 
                 // Step B: Clean up names (remove .csv if present)
@@ -349,7 +347,7 @@ function HomeMenu({ onSelect, greeting }) {
 }
 
 // ==========================================
-// 📜 GAME 1: THE ARCHIVIST (Updated: Thank You Message)
+// 📜 GAME 1: THE ARCHIVIST 
 // ==========================================
 function GameArchivist({ userKey, setXP, dialects, onBack, greeting }) {
     const [mission, setMission] = useState({ 
@@ -366,14 +364,14 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting }) {
     
     // 🟢 INFINITE LOOP LOGIC
     const loadNextTopic = async () => {
-        const topics = ["Daily Life", "Food", "Weather", "Childhood", "Hobbies", "Weekend Plans", "Family"];
+        const topics = ["Daily Life", "Food", "Weather", "Childhood", "Hobbies", "Weekend Plans", "Family", "Traffic", "Vacation", "Staycation", "Friendship", "Work", "Psychology", "Sport", "Music"];
         const randomTopic = getRandom(topics);
         
         // 🟢 UPDATE: Show "Thank You" message instead of "Loading..."
         setMission(prev => ({ 
             ...prev, 
-            text: "Entry Archived Successfully.",
-            subtext: "Thanks for your contribution! Fetching next topic...",
+            text: "Thank you for that!",
+            subtext: "Let's see what else we can chat about...",
             image: getDoodleUrl("success") 
         }));
 
@@ -382,14 +380,14 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting }) {
             const res = await app.predict("/generate_mission", [randomTopic]);
             const data = JSON.parse(res.data[0]);
             
-            // Artificial delay (1.5s) so they can read the "Thank You" message
+            // Artificial delay (1.1s) so they can read the "Thank You" message
             setTimeout(() => {
                 setMission({ 
                     text: data.text, 
                     subtext: "Journal Entry • Keep it short (1 sentence)", 
                     image: getDoodleUrl(randomTopic) 
                 });
-            }, 1500);
+            }, 1100);
             
         } catch { 
             setMission({ 
@@ -422,25 +420,62 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting }) {
 }
 
 // ==========================================
-// ⚡ GAME 2: SPEED CHAT (Infinite Loop + Timer)
+// ⚡ GAME 2: SPEED CHAT (Guest Mode + Instant Reset)
 // ==========================================
+const STARTER_QUESTIONS = [
+    "What is the best meal you've ever had?",
+    "Cats or Dogs? Explain why.",
+    "If you could fly, where would you go first?",
+    "What is your favorite time of day?",
+    "Tell me about a movie you watched recently.",
+    "What is your favorite season and why?",
+    "If you had a free hour right now, what would you do?",
+    "What kind of music do you listen to when you're happy?",
+    "Who is the funniest person in your family?",
+    "How do you deal with bad traffic?",
+    "Beach vacation or City adventure?",
+    "What was your very first job?",
+    "Do you prefer working alone or in a team?",
+    "What is your favorite sport to watch or play?",
+    "If you could have one superpower, what would it be?",
+    "Are you more of an introvert or an extrovert?",
+    "If you won the lottery today, what is the first thing you'd buy?"
+];
+
 function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting }) {
-    const [stage, setStage] = useState("onboarding"); 
+    // Stage: 'onboarding' -> 'mission' -> 'topic_select'
+    const [gameStage, setGameStage] = useState("onboarding"); 
     const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
+    const [loading, setLoading] = useState(false);
     
+    // Initial State
     const [mission, setMission] = useState({ 
         text: greeting, 
-        subtext: "Establishing Secure Link...",
+        subtext: "Ready to start...", 
         image: getDoodleUrl("network") 
     });
 
+    // 10-Second Timer
     const [timeLeft, setTimeLeft] = useState(10);
     const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ 
-    	audio: true,
-    	blobPropertyBag: { type: "audio/wav" } // 🟢 FORCE WAV FORMAT
+        audio: true, blobPropertyBag: { type: "audio/wav" } 
     });
     
     const timerRef = useRef(null);
+
+    // 🟢 AUTO-START (Only if nickname exists in storage)
+    useEffect(() => {
+        const savedName = localStorage.getItem("pure_nickname");
+        if (savedName && gameStage === "onboarding") {
+            const randomStart = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
+            setMission({
+                text: randomStart,
+                subtext: "Round 1: Warm Up • 10 Seconds",
+                image: getDoodleUrl("spark")
+            });
+            setGameStage("mission");
+        }
+    }, []); 
 
     // Timer Logic
     useEffect(() => {
@@ -456,45 +491,129 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting }) {
         return () => clearInterval(timerRef.current);
     }, [status, stopRecording]);
 
+    // AI Mission Generator
     const fetchMission = async (topic) => {
-        setMission(prev => ({ 
-            ...prev, 
-            text: greeting, 
-            subtext: `Loading Topic: ${topic}...` 
-        }));
-        
+        setLoading(true);
+        setMission(prev => ({ ...prev, subtext: `Loading Topic: ${topic}...` }));
         try {
             const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/generate_mission", [`Ask ${nickname} about ${topic}`]);
-            const data = JSON.parse(res.data[0]);
-            setMission({ text: data.text, subtext: `Target: ${topic}`, image: getDoodleUrl(topic) });
-        } catch { 
-            setMission({ text: `Hey ${nickname}, tell me about ${topic}!`, subtext: "Offline Mode", image: getDoodleUrl(topic) }); 
+            const nameToUse = nickname || "Guest"; // Handle empty name
+            const prompt = `Topic: ${topic}. User: ${nameToUse}. Ask a short, fun question.`;
+            const res = await app.predict("/generate_mission", [prompt]);
+            
+            let data;
+            try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
+
+            setMission({ 
+                text: data.text, 
+                subtext: `Target: ${topic} • 10 Seconds`, 
+                image: getDoodleUrl(topic) 
+            });
+            setGameStage("mission");
+        } catch (e) { 
+            setMission({ 
+                text: `Tell me about ${topic}!`, 
+                subtext: "Offline Mode", 
+                image: getDoodleUrl(topic) 
+            }); 
+            setGameStage("mission");
+        }
+        setLoading(false);
+    };
+
+    // --- HANDLERS ---
+    
+    // 🟢 UPDATED: Handles Guest Mode (Empty Nickname)
+    const startFirstRound = () => {
+        const nameToSave = nickname.trim();
+        
+        // Only save to storage if they actually typed a name
+        if (nameToSave) {
+            localStorage.setItem("pure_nickname", nameToSave);
+        }
+        
+        const randomStart = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
+        setMission({
+            text: randomStart,
+            subtext: "Round 1: Warm Up • 10 Seconds",
+            image: getDoodleUrl("spark")
+        });
+        setGameStage("mission");
+    };
+
+    const handleNextRound = () => {
+        setGameStage("topic_select");
+    };
+
+    // 🟢 GLOBAL RESET FUNCTION
+    // This clears everything and goes back to the start screen
+    const handleResetGame = () => {
+        if(window.confirm("End current session and return to start?")) {
+            localStorage.removeItem("pure_nickname");
+            setNickname("");
+            setGameStage("onboarding");
         }
     };
 
-    if (stage === "onboarding") {
+    // --- VIEW 1: ONBOARDING ---
+    if (gameStage === "onboarding" && !localStorage.getItem("pure_nickname")) {
         return (
-            <div className="onboarding-screen">
-                <h3>IDENTIFY YOURSELF</h3>
-                <input className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="Enter Codename" />
-                <div style={{marginTop:'20px'}}>
-                    <button className="cyber-button" onClick={() => {
-                        if(!nickname) return;
-                        localStorage.setItem("pure_nickname", nickname);
-                        setStage("challenge");
-                        fetchMission("Hobbies");
-                    }}>START MISSION</button>
-                    <br/><br/>
-                    <button className="cancel-btn" onClick={onBack}>RETURN TO BASE</button>
+            <div className="game-layout">
+                <div className="mission-card" style={{display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center'}}>
+                    <div className="icon-large">⚡</div>
+                    <h3>SPEED CHAT</h3>
+                    <p>Enter codename (Optional)</p>
+                    <input 
+                        className="cyber-input" 
+                        value={nickname} 
+                        onChange={e => setNickname(e.target.value)} 
+                        placeholder="Guest" 
+                        style={{margin:'20px 0', textAlign:'center'}}
+                    />
+                    <div className="action-row">
+                        <button className="cancel-btn" onClick={onBack}>BACK</button>
+                        {/* 🟢 ENABLED ALWAYS */}
+                        <button className="cyber-button" onClick={startFirstRound}>
+                            {nickname ? "START MISSION" : "PLAY"}
+                        </button>
+                    </div>
                 </div>
             </div>
         );
     }
 
+    // --- VIEW 2: TOPIC SELECTION ---
+    if (gameStage === "topic_select") {
+        return (
+            <div className="game-layout">
+                <div className="mission-card">
+                    <div className="mission-content-overlay" style={{flexDirection:'column', alignItems:'stretch'}}>
+                        <div style={{textAlign:'center', marginBottom:'15px'}}>
+                            <h3>🔄 ROUND COMPLETE</h3>
+                            <p>Select next topic:</p>
+                        </div>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
+                            {TOPIC_SUGGESTIONS.map(t => (
+                                <button key={t} className="cyber-button" style={{background:'rgba(255,255,255,0.1)', fontSize:'12px'}} onClick={() => fetchMission(t)}>{t}</button>
+                            ))}
+                        </div>
+                        {/* Reset Button at bottom of list */}
+                        <button onClick={handleResetGame} style={{marginTop:'20px', background:'transparent', border:'1px solid #ef4444', color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px'}}>
+                            🚫 END SESSION
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading) return <div className="game-layout"><div className="loading">GENERATING MISSION...</div></div>;
+
+    // --- VIEW 3: GAME LOOP (SharedLayout) ---
     return (
         <SharedGameLayout
-            title={`CHAT: ${nickname.toUpperCase()}`}
+            key={mission.text} 
+            title={`SPEED CHAT`} // Removed name from title for cleaner look
             mission={mission}
             recStatus={status}
             startRec={startRecording}
@@ -505,9 +624,10 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting }) {
             setXP={setXP}
             onBack={onBack}
             timer={timeLeft} 
-            onNext={() => fetchMission(getRandom(["Food", "Traffic", "Music", "Money", "Work", "School", "Family", "Dreams"]))} 
-  	    sourceTag="Game: SpeedChat"
-
+            onNext={handleNextRound} 
+            sourceTag="Game: SpeedChat"
+            // 🟢 THIS ADDS THE TRASH CAN ICON TO THE HEADER
+            onReset={handleResetGame} 
         />
     );
 }
@@ -1019,7 +1139,7 @@ function GameActiveListener({ userKey, setXP, dialects, onBack }) {
 
 
 // ==========================================
-// ⚙️ SHARED GAME LAYOUT (Updated with Regenerate)
+// ⚙️ SHARED GAME LAYOUT
 // ==========================================
 function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, dialects, userKey, setXP, onBack, onNext, timer, mode, sourceTag, onReset }) {
     const [step, setStep] = useState("RECORD"); 
@@ -1060,7 +1180,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
         }
     };
 
-    // 2. 🟢 NEW: Regenerate Meaning (Text -> Meaning)
+    // 2. 🟢 Regenerate Meaning (Text -> Meaning)
     const handleRegenerate = async () => {
         if (!transcribed.trim()) return;
         setIsRegenerating(true);
@@ -1095,23 +1215,27 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
     // 3. Final Submit
     const handleSubmit = async () => {
         setStep("MINTING");
+        
+        // 🟢 SAFETY VALVE: If backend hangs, force next round after 5 seconds
+        const safetyTimer = setTimeout(() => {
+            if (onNext) {
+                setStep("RECORD");
+                onNext();
+            }
+        }, 5000);
+
         try {
             const blob = await fetch(mediaBlob).then(r => r.blob());
             const app = await Client.connect(SPACE_URL);
             const d = dialect === "+ Add New Dialect" ? customD : dialect;
             
+            // 🟢 UPDATED API CALL (12 Arguments)
             await app.predict("/check_and_submit_logic", [
-                transcribed, 
-                d, 
-                customD, 
-                clarification, 
-                tone, 
-                context, 
-                sourceTag || pragmatics,
-                userKey, 
-                blob, 
-                false
+                transcribed, d, customD, clarification, tone, context, pragmatics,
+                sourceTag || "Unknown Game", "User/AI Hybrid", userKey, blob, false
             ]);
+
+            clearTimeout(safetyTimer); // Clear safety if successful
             setXP(p => p + 50);
             
             if (onNext) { 
@@ -1186,7 +1310,8 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                         </div>
 
                         <div className={`record-zone ${recStatus === "recording" ? "active" : ""}`}>
-                            {timer !== undefined && recStatus === "recording" && <div className="timer">{timer}s</div>}
+                            {/* 🟢 Ensure this line exists to show the 10s countdown */}
+     			    {timer !== undefined && recStatus === "recording" && <div className="timer">{timer}s</div>}
                             <button 
                                 className={`record-btn ${recStatus === "recording" ? "pulsing" : ""}`}
                                 onMouseDown={startRec} onMouseUp={stopRec}
