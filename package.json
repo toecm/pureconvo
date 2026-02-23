@@ -5,6 +5,7 @@
   "dependencies": {
     "@gradio/client": "^2.0.4",
     "ethers": "^6.16.0",
+    "purechainlib": "^2.0.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-media-recorder": "^1.7.2",

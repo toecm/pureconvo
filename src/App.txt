@@ -50,6 +50,7 @@ const GAME_ASSETS = {
 };
 
 // --- CONFIGURATION ---
+// Using the "username/space" format is safest for the Gradio Client
 const SPACE_URL = "toecm/PureConvo"; 
 
 const FALLBACK_DIALECTS = [
@@ -93,6 +94,7 @@ const PRIVACY_STATEMENTS = [
     "Speak your mind. We are making your voice the new normal."
 ];
 
+// --- ASSETS & HELPERS ---
 // --- ASSETS & HELPERS ---
 const getDoodleUrl = (k) => `https://loremflickr.com/400/200/${k},sketch/all?random=${Date.now()}`;
 const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all?random=${Date.now()}`;const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -138,7 +140,7 @@ function GameTutorial({ gameKey, onStart, onCancel }) {
 }
 
 // ==========================================
-// 🚀 MAIN APP COMPONENT
+// 🚀 MAIN APP COMPONENT (UPDATED FOOTER & IDS)
 // ==========================================
 function App() {
   const [activeGame, setActiveGame] = useState("HOME"); 
@@ -149,18 +151,20 @@ function App() {
   const [dialects, setDialects] = useState(FALLBACK_DIALECTS);
   const [greeting, setGreeting] = useState(""); 
   
+  // 🟢 Pulse State for the Green Glow
   const [isPulsing, setIsPulsing] = useState(false);
 
   useEffect(() => {
-    // 1. SESSION ID
+    // 🟢 1. SESSION ID Setup (Persistent)
     let sessionID = localStorage.getItem("pureconvo_session_id");
     if (!sessionID) {
+        // Format: user_a1b2_9021 (Readable but unique)
         sessionID = `user_${uuidv4().split('-')[0]}_${Date.now().toString().slice(-4)}`;
         localStorage.setItem("pureconvo_session_id", sessionID);
     }
-    setUserKey(sessionID); 
+    setUserKey(sessionID); // Passes this ID to all games
 
-    // 2. OPERATOR ID
+    // 🟢 2. OPERATOR ID Setup (Persistent "Wallet")
     let opAddr = localStorage.getItem("pureconvo_operator_addr");
     if (!opAddr) {
         opAddr = "0x" + uuidv4().replace(/-/g, "").slice(0, 40);
@@ -172,7 +176,7 @@ function App() {
           try {
               const app = await Client.connect(SPACE_URL);
               const res = await app.predict("/check_cloud_sync");
-              setCloudStatus(res.data[0]); 
+              setCloudStatus(res.data[0]); // Sets it to "🟢 CLOUD SYNCED..."
           } catch (e) {
               console.warn("Could not fetch cloud status");
               setCloudStatus("🔴 SYNC OFFLINE");
@@ -180,6 +184,7 @@ function App() {
       };
       
       checkSync();
+      // Optional: Check every 5 minutes (300000ms) to keep it live
       const syncInterval = setInterval(checkSync, 300000); 
       return () => clearInterval(syncInterval);
 
@@ -220,10 +225,11 @@ function App() {
     loadDialects();
   }, []);
 
+  // 🟢 Helper to handle ID Click (Copy + Glow)
   const handleIDClick = () => {
       navigator.clipboard.writeText(userKey);
-      setIsPulsing(true);
-      setTimeout(() => setIsPulsing(false), 600);
+      setIsPulsing(true); // Trigger Glow
+      setTimeout(() => setIsPulsing(false), 600); // Remove Glow
       alert(`Copied Session ID: ${userKey}`);
   };
 
@@ -231,8 +237,9 @@ function App() {
     <div className="App">
       <div className="cyber-container">
 
-    <div className="hud-header">
+	<div className="hud-header">
             <div className="xp-badge">✨ {xp} XP</div>
+            {/* ADD THIS NEW STATUS BADGE */}
             <div className="status-badge" style={{marginLeft: '10px', background: 'rgba(0,0,0,0.5)'}}>
                 ☁️ {cloudStatus}
             </div>
@@ -241,42 +248,47 @@ function App() {
 
         {activeGame === "HOME" && <HomeMenu onSelect={setActiveGame} greeting={greeting} />}
         
-        {/* 🟢 PASS THE OPERATOR ADDRESS TO ALL GAMES */}
         {activeGame === "ARCHIVIST" && (
             <GameArchivist 
-                userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                userKey={userKey} setXP={setXP} dialects={dialects} 
                 onBack={() => setActiveGame("HOME")} greeting={greeting} 
             />
         )}
 
         {activeGame === "SPEED" && (
             <GameSpeedChat 
-                userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                userKey={userKey} setXP={setXP} dialects={dialects} 
                 onBack={() => setActiveGame("HOME")} greeting={greeting} 
             />
         )}
 
         {activeGame === "VISION" && (
             <GameVisionQuest 
-                userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                userKey={userKey} setXP={setXP} dialects={dialects} 
                 onBack={() => setActiveGame("HOME")} greeting={greeting} 
             />
         )}
 
         {activeGame === "LISTENER" && (
             <GameActiveListener 
-                userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                userKey={userKey} setXP={setXP} dialects={dialects} 
                 onBack={() => setActiveGame("HOME")} 
             />
         )}
 
+        {/* 🟢 UPDATED FOOTER WITH OPERATOR + SESSION ID + GREEN GLOW */}
         <div 
             className={`id-footer ${isPulsing ? 'pulse-active' : ''}`}
             onClick={handleIDClick}
             title="Tap to Copy Session ID"
             style={{
-                cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px',
-                padding: '8px', marginTop: '10px', transition: 'all 0.3s ease'
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                padding: '8px',
+                marginTop: '10px',
+                transition: 'all 0.3s ease'
             }}
         >
             <div style={{fontWeight: 'bold', color: '#94a3b8'}}>
@@ -322,8 +334,10 @@ function HomeMenu({ onSelect, greeting }) {
 // ==========================================
 // 📜 GAME 1: THE ARCHIVIST 
 // ==========================================
-function GameArchivist({ userKey, setXP, dialects, onBack, greeting, operator }) {
+function GameArchivist({ userKey, setXP, dialects, onBack, greeting }) {
     const [mission, setMission] = useState({ text: greeting, subtext: "Retrieving Archive Topic...", image: getDoodleUrl("abstract") });
+    
+    // 🟢 Audio Fix: FORCE WAV
     const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ audio: true });
     
     const loadNextTopic = async () => {
@@ -351,20 +365,21 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting, operator })
         <SharedGameLayout
             title="ARCHIVE ENTRY" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
             mediaBlob={mediaBlobUrl} dialects={dialects} userKey={userKey} setXP={setXP} onBack={onBack}
-            // 🟢 SOURCE FIX: Combine Game Name and Operator ID
-            onNext={loadNextTopic} sourceTag={`Game: Archivist | Op: ${operator}`}
+            // 🟢 Source Fix: SEND 'Game: Archivist'
+            onNext={loadNextTopic} sourceTag="Game: Archivist"
         />
     );
 }
 
 // ==========================================
-// ⚡ GAME 2: SPEED CHAT 
+// ⚡ GAME 2: SPEED CHAT (High Performance)
 // ==========================================
-function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator }) {
+function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting }) {
     const [gameStage, setGameStage] = useState("onboarding"); 
     const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
     const [loading, setLoading] = useState(false);
     
+    // AI Client Reference (Connects once, stays connected)
     const clientRef = useRef(null);
 
     const [mission, setMission] = useState({ 
@@ -378,11 +393,13 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
     
     const timerRef = useRef(null);
 
+    // 🟢 1. CONNECT TO AI ON MOUNT (Background)
     useEffect(() => {
         const initClient = async () => {
             try {
                 const app = await Client.connect(SPACE_URL);
                 clientRef.current = app;
+                console.log("⚡ Speed Chat: AI Connected & Ready");
             } catch (e) {
                 console.log("⚡ Speed Chat: AI Connection Failed (Will use fallbacks)");
             }
@@ -390,6 +407,7 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
         initClient();
     }, []);
 
+    // Timer Logic
     useEffect(() => {
         if (status === "recording") {
             setTimeLeft(10);
@@ -403,14 +421,19 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
         return () => clearInterval(timerRef.current);
     }, [status, stopRecording]);
 
+    // 🟢 2. INSTANT FETCH LOGIC
     const fetchMission = async (topic) => {
         setLoading(true);
         setMission(prev => ({ ...prev, subtext: `Loading Topic: ${topic}...` }));
         
+        // A. If Client isn't ready yet, use Fallback INSTANTLY
         if (!clientRef.current) {
+            console.log("⚡ Client not ready, using instant fallback");
             const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
             setMission({ 
-                text: randomStarter, subtext: `Backup Protocol: ${topic}`, image: getDoodleUrl(topic) 
+                text: randomStarter, 
+                subtext: `Backup Protocol: ${topic}`, 
+                image: getDoodleUrl(topic) 
             }); 
             setGameStage("mission");
             setLoading(false);
@@ -418,8 +441,15 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
         }
 
         try {
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1500));
-            const apiPromise = clientRef.current.predict("/generate_mission", [`Topic: ${topic}. User Nickname: ${nickname}. Ask a short, engaging question.`]);
+            // B. Aggressive 1.5s Timeout
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("Timeout")), 1500)
+            );
+
+            // Reuse existing connection
+            const apiPromise = clientRef.current.predict("/generate_mission", [
+                `Topic: ${topic}. User Nickname: ${nickname}. Ask a short, engaging question.`
+            ]);
 
             const res = await Promise.race([apiPromise, timeoutPromise]);
             
@@ -428,27 +458,40 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
             catch { data = { text: res.data[0], emoji: "⚡" }; }
 
             setMission({ 
-                text: data.text, subtext: `Target: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) 
+                text: data.text, 
+                subtext: `Target: ${topic} • 10 Seconds`, 
+                image: getDoodleUrl(topic) 
             });
             setGameStage("mission");
 
         } catch (e) { 
+            // C. Fallback logic
+            console.log("⚡ AI Lag detected, switching to fallback");
             const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
+            
             setMission({ 
-                text: randomStarter, subtext: `Backup Protocol: ${topic}`, image: getDoodleUrl(topic) 
+                text: randomStarter, 
+                subtext: `Backup Protocol: ${topic}`, 
+                image: getDoodleUrl(topic) 
             }); 
             setGameStage("mission");
         }
         setLoading(false);
     };
 
+    // Handlers
     const startFirstRound = () => {
         if(!nickname) return;
         localStorage.setItem("pure_nickname", nickname);
+        // Instant start with a fallback question to mask initial loading
+        const randomStart = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
         fetchMission("General"); 
     };
 
-    const handleNextRound = () => setGameStage("topic_select");
+    const handleNextRound = () => {
+        setGameStage("topic_select");
+    };
+
     const handleReset = () => {
         if (window.confirm("Reset Speed Chat identity?")) {
             localStorage.removeItem("pure_nickname");
@@ -456,6 +499,8 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
             setGameStage("onboarding");
         }
     };
+
+    // --- RENDER VIEWS ---
 
     if (gameStage === "onboarding" && !localStorage.getItem("pure_nickname")) {
         return (
@@ -465,8 +510,11 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
                     <h3>IDENTIFY YOURSELF</h3>
                     <p>Enter a codename to start the session.</p>
                     <input 
-                        className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} 
-                        placeholder="e.g. Maverick" style={{margin:'20px 0', textAlign:'center'}}
+                        className="cyber-input" 
+                        value={nickname} 
+                        onChange={e => setNickname(e.target.value)} 
+                        placeholder="e.g. Maverick" 
+                        style={{margin:'20px 0', textAlign:'center'}}
                     />
                     <div className="action-row">
                         <button className="cancel-btn" onClick={onBack}>BACK</button>
@@ -486,15 +534,32 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
                     
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '20px'}}>
                         {TOPIC_SUGGESTIONS.map(t => (
-                            <button key={t} className="cyber-button" style={{background: 'rgba(255,255,255,0.1)', fontSize:'12px'}} onClick={() => fetchMission(t)}>{t}</button>
+                            <button 
+                                key={t} 
+                                className="cyber-button" 
+                                style={{background: 'rgba(255,255,255,0.1)', fontSize:'12px'}}
+                                onClick={() => fetchMission(t)}
+                            >
+                                {t}
+                            </button>
                         ))}
                     </div>
                     
                     <div style={{marginTop: '20px', borderTop:'1px solid #334155', paddingTop:'15px'}}>
-                        <input className="cyber-input" placeholder="Or type a custom topic..." onKeyDown={(e) => { if(e.key === 'Enter') fetchMission(e.target.value); }}/>
+                        <input 
+                            className="cyber-input" 
+                            placeholder="Or type a custom topic..."
+                            onKeyDown={(e) => { if(e.key === 'Enter') fetchMission(e.target.value); }}
+                        />
                     </div>
                     
-                    <button onClick={handleReset} style={{marginTop:'20px', background:'transparent', border:'1px solid #ef4444', color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', fontWeight:'bold', width:'100%'}}>
+                    <button 
+                        onClick={handleReset} 
+                        style={{
+                            marginTop:'20px', background:'transparent', border:'1px solid #ef4444', 
+                            color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', fontWeight:'bold', width:'100%'
+                        }}
+                    >
                         🚫 CHANGE IDENTITY / RESET
                     </button>
                 </div>
@@ -512,10 +577,20 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
 
     return (
         <SharedGameLayout
-            title={`CHAT: ${nickname.toUpperCase()}`} mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} dialects={dialects} userKey={userKey} setXP={setXP} onBack={onBack} timer={timeLeft} 
-            // 🟢 SOURCE FIX: Combine Game Name and Operator ID
-            onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat | Op: ${operator}`}
+            title={`CHAT: ${nickname.toUpperCase()}`}
+            mission={mission}
+            recStatus={status}
+            startRec={startRecording}
+            stopRec={stopRecording}
+            mediaBlob={mediaBlobUrl}
+            dialects={dialects}
+            userKey={userKey}
+            setXP={setXP}
+            onBack={onBack}
+            timer={timeLeft} 
+            onNext={handleNextRound} 
+            onReset={handleReset}
+            sourceTag="Game: SpeedChat"
         />
     );
 }
@@ -523,8 +598,9 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
 // ==========================================
 // 👁️ GAME 3: VISION QUEST 
 // ==========================================
-function GameVisionQuest({ userKey, setXP, dialects, onBack, greeting, operator }) {
+function GameVisionQuest({ userKey, setXP, dialects, onBack, greeting }) {
     const [mission, setMission] = useState({ text: greeting, subtext: "Calibrating Optical Sensors...", image: getPhotoUrl("cyberpunk") });
+    // 🟢 Audio Fix: FORCE WAV
     const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ audio: true });
 
     const loadNewImage = () => {
@@ -539,8 +615,8 @@ function GameVisionQuest({ userKey, setXP, dialects, onBack, greeting, operator 
         <SharedGameLayout
             title="OBSERVATION DECK" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
             mediaBlob={mediaBlobUrl} dialects={dialects} userKey={userKey} setXP={setXP} onBack={onBack}
-            // 🟢 SOURCE FIX: Combine Game Name and Operator ID
-            onNext={loadNewImage} mode="vision" sourceTag={`Game: Vision | Op: ${operator}`}
+            // 🟢 Source Fix: SEND 'Game: Vision'
+            onNext={loadNewImage} mode="vision" sourceTag="Game: Vision"
         />
     );
 }
@@ -548,7 +624,7 @@ function GameVisionQuest({ userKey, setXP, dialects, onBack, greeting, operator 
 // ==========================================
 // 👂 GAME 4: THE LISTENER 
 // ==========================================
-function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
+function GameActiveListener({ userKey, setXP, dialects, onBack }) {
     const loadSavedData = () => { const saved = localStorage.getItem("echo_memory_" + userKey); return saved ? JSON.parse(saved) : null; };
     const memory = loadSavedData();
     const [setup, setSetup] = useState(memory ? memory.setup : { voiceIndex: 0, pitch: 1.0, rate: 1.0, userDialect: dialects[0] || "General" });
@@ -565,12 +641,15 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
     const [isRegenerating, setIsRegenerating] = useState(false);
     const chatEndRef = useRef(null);
     
+    // 🟢 FIX 2: Watcher to update the selection when cloud data arrives
     useEffect(() => {
+        // If dialects load and the current setup isn't in the list, snap to the first available dialect
         if (dialects.length > 0 && !dialects.includes(setup.userDialect)) {
             setSetup(prev => ({ ...prev, userDialect: dialects[0] }));
         }
     }, [dialects]);
 
+    // ... (Your existing useEffects continue below) ...
     useEffect(() => {
         if (phase === "chat" || phase === "verify") {
             const dataToSave = { setup, messages, nickname, pronunciation };
@@ -615,7 +694,9 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
 
     const startSession = () => { const intro = "Hello, my name is Echo. What should I call you?"; setMessages([{ sender: 'ai', text: intro }]); setPhase("onboarding"); speak(intro); };
     const handleRetry = () => { setPhase("chat"); setCurrentTranscript(""); setCurrentClarification(""); setIsEdited(false); };
-    
+    const handleEdit = (text) => { setCurrentTranscript(text); setIsEdited(true); };
+    const handleEditMeaning = (text) => { setCurrentClarification(text); setIsEdited(true); };
+
     const handleRegenerateMeaning = async () => {
         if (!currentTranscript.trim()) return;
         setIsRegenerating(true);
@@ -652,10 +733,10 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
                  wrappedAudio = handle_file(audioFile);
             }
             
-            // 🟢 SOURCE FIX: Pass the Operator address into the backend
+            // 🟢 FIX 3: Removed the 'if (wrappedAudio)' wrapper so it ALWAYS submits!
             await app.predict("/check_and_submit_logic", [
                 currentTranscript, d, "", currentClarification, "Conversational", "Chat", "Interactive Chat Session",
-                `Game: Listener | Op: ${operator}`, clarSource, userKey, wrappedAudio, false
+                "Game: Listener", clarSource, userKey, wrappedAudio, false
             ]);
             
             const prompt = `User said: "${currentTranscript}". Meaning: "${currentClarification}". You are Echo. Reply naturally with a short follow-up question.`;
@@ -663,6 +744,7 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
             let replyText = "";
             const rawData = res.data[0];
             
+            // ... (The rest of your existing logic for parsing the text stays the same) ...
             if (typeof rawData === "string") { try { const parsed = JSON.parse(rawData); replyText = parsed.text || rawData; } catch { replyText = rawData; } }
             else if (typeof rawData === "object" && rawData !== null) { replyText = rawData.text || JSON.stringify(rawData); } 
             else { replyText = "I see. Tell me more."; }
@@ -702,6 +784,7 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
         } catch (e) { setMessages(p => [...p, { sender: 'ai', text: "I couldn't hear you. Try again?" }]); setPhase("chat"); }
     };
 
+    // 🟢 Audio Fix: FORCE WAV
     const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ audio: true, onStop: handleAudioStop });
 
     return (
@@ -751,6 +834,7 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
                         )}
                         {phase === "verify" && (
                             <div className="verify-card">
+                                {/* 🟢 NEW: Audio Playback Preview */}
                                 <div className="audio-preview" style={{marginBottom: '15px', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '12px', border: '1px solid #334155'}}>
                                     <label style={{fontSize:'10px', color:'#94a3b8', display:'block', marginBottom:'5px', letterSpacing: '1px'}}>REVIEW YOUR AUDIO:</label>
                                     <audio src={mediaBlobUrl} controls style={{width: '100%', height: '35px', borderRadius: '8px', outline: 'none'}} />
@@ -799,14 +883,19 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
     const [dialect, setDialect] = useState(dialects[0] || "General");
     const [customD, setCustomD] = useState("");
 
+    // 🟢 FIX 3: Watcher to update the selection when cloud data arrives
     useEffect(() => {
+        // If the new list of dialects arrives from Hugging Face and our current 
+        // fallback choice isn't in it, instantly snap to the first real dialect.
         if (dialects.length > 0 && !dialects.includes(dialect)) {
             setDialect(dialects[0]);
         }
     }, [dialects]);
 
+    // 🟢 AUTO-ANALYZE LOGIC: Triggers when recording stops (and we have a blob)
     const [lastProcessedBlob, setLastProcessedBlob] = useState(null);
     useEffect(() => {
+        // Only trigger if we have a blob, it's new, and we are in RECORD mode
         if (mediaBlob && mediaBlob !== lastProcessedBlob && step === "RECORD") {
             setLastProcessedBlob(mediaBlob);
             handleAnalyze();
@@ -862,6 +951,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
             const app = await Client.connect(SPACE_URL);
             const d = dialect === "+ Add New Dialect" ? customD : dialect;
             
+            // 🟢 FIX 1: Safely check for audio, fetch it, and wrap it
             let wrappedAudio = null;
             if (mediaBlob) {
                 try {
@@ -873,6 +963,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                 }
             }
             
+            // 🟢 FIX 2: Unconditional submit. Passes the Game Name (sourceTag) and Text even if audio is null!
             await app.predict("/check_and_submit_logic", [
                 transcribed, d, customD, clarification, tone, context, pragmatics,
                 sourceTag || "Unknown Game", "User/AI Hybrid", userKey, wrappedAudio, false
@@ -880,10 +971,12 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
             
             setXP(p => p + 50);
             
+            // Show the sleek inline success message
             setStep("💎 Contribution Saved!"); 
             setTranscribed("")
             setClarification("");
             
+            // Wait 1.5 seconds so the user can read the success message, then move on
             setTimeout(() => {
                 if (onNext) { 
                     setStep("RECORD"); 
@@ -928,6 +1021,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                             <button className={`record-btn ${recStatus === "recording" ? "pulsing" : ""}`} onMouseDown={startRec} onMouseUp={stopRec} onTouchStart={startRec} onTouchEnd={stopRec}>{recStatus === "recording" ? "🛑 RELEASE" : "🎙️ HOLD TO SPEAK"}</button>
                         </div>
                         <div className="action-row"><button className="cancel-btn" onClick={onBack}>BACK</button>
+                        {/* 🟢 Removed Manual Analyze Button because it's now automatic */}
                         </div>
                     </>
                 )}

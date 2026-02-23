@@ -551,3 +551,67 @@ textarea {
     to { opacity: 1; transform: scale(1); }
 }
 
+/* Timer Animation */
+.timer {
+  position: absolute;
+  top: -30px;
+  right: 10px;
+  color: #ef4444; /* Red for urgency */
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  animation: pulse 1s infinite;
+}
+
+.countdown-timer {
+  font-size: 40px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 10px;
+  text-shadow: 0 0 10px currentColor;
+  font-family: 'Courier New', monospace;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* ==========================================
+   🏆 ETHICAL IMPACT BADGE ANIMATION
+   ========================================== */
+.impact-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  background: linear-gradient(45deg, #facc15, #fb923c); /* Bright Gold to Deep Orange */
+  color: #000;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  border: 1px solid #fffbeb;
+  text-transform: uppercase;
+  
+  /* Trigger the custom pulse animation */
+  animation: gentle-impact-pulse 2s infinite ease-in-out;
+}
+
+/* The Keyframes for the Pulse */
+@keyframes gentle-impact-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+  }
+  50% {
+    transform: scale(1.05); /* Gently swells by 5% */
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.9), 0 0 35px rgba(251, 146, 60, 0.6); /* Aura expands and intensifies */
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+  }
+}
