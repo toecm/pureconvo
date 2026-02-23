@@ -490,53 +490,39 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
 
     if (gameStage === "onboarding" && !localStorage.getItem("pure_nickname")) {
         return (
-            <div className="game-layout">
-                <div className="mission-card" style={{
-                    display:'flex', 
-                    flexDirection:'column', 
-                    justifyContent:'center', 
-                    alignItems:'center', 
-                    textAlign:'center',
-                    background: '#1e293b', /* 🟢 Forces the dark cyber background */
-                    padding: '30px',
-                    borderRadius: '16px',
-                    border: '1px solid #334155',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
-                }}>
-                    <div className="icon-large" style={{fontSize: '3rem', marginBottom: '10px'}}>🕵️‍♂️</div>
-                    
-                    <h3 style={{margin: '0 0 10px 0', color: '#f472b6', letterSpacing: '1px'}}>
-                        IDENTIFY YOURSELF
-                    </h3>
-                    
-                    {/* 🟢 Forces the text to be a readable light gray */}
-                    <p style={{color: '#cbd5e1', fontSize: '14px', marginBottom: '20px'}}>
-                        Enter a codename to start the session.
-                    </p>
-                    
+            <div style={{ padding: '20px', backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '15vh' }}>
+                <div style={{ textAlign: 'center', fontSize: '3rem', marginBottom: '10px' }}>🕵️‍♂️</div>
+                <h2 style={{ color: '#f472b6', textAlign: 'center', marginBottom: '20px' }}>IDENTIFY YOURSELF</h2>
+                <p style={{ color: 'white', textAlign: 'center', marginBottom: '30px' }}>Enter a codename to start.</p>
+
+                {/* 🟢 THE FIX: Input and Button are now locked side-by-side in the same row! */}
+                <div style={{ display: 'flex', gap: '10px', maxWidth: '400px', margin: '0 auto' }}>
                     <input 
-                        className="cyber-input" 
                         value={nickname} 
                         onChange={e => setNickname(e.target.value)} 
-                        placeholder="e.g. Maverick" 
-                        style={{
-                            margin:'0 0 25px 0', 
-                            textAlign:'center',
-                            background: 'rgba(0,0,0,0.5)', /* Dark input field */
-                            color: '#ffffff',              /* White typing text */
-                            border: '1px solid #38bdf8',   /* Neon blue border */
-                            padding: '12px',
-                            borderRadius: '8px',
-                            width: '80%'
+                        placeholder="Codename..." 
+                        style={{ 
+                            flex: 1, padding: '15px', fontSize: '16px', borderRadius: '8px', 
+                            border: '2px solid #38bdf8', outline: 'none'
                         }}
                     />
-                    
-                    <div className="action-row" style={{display: 'flex', gap: '10px', width: '100%'}}>
-                        <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
-                        <button className="cyber-button" onClick={startFirstRound} disabled={!nickname} style={{flex: 2}}>
-                            START MISSION
-                        </button>
-                    </div>
+                    <button 
+                        onClick={startFirstRound} 
+                        disabled={!nickname}
+                        style={{ 
+                            padding: '15px 25px', fontSize: '16px', fontWeight: 'bold', borderRadius: '8px',
+                            backgroundColor: nickname ? '#10b981' : '#64748b', /* Turns green when typing */
+                            color: 'white', border: 'none', cursor: 'pointer'
+                        }}
+                    >
+                        GO
+                    </button>
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                    <button onClick={onBack} style={{ padding: '10px 20px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '8px' }}>
+                        BACK TO MENU
+                    </button>
                 </div>
             </div>
         );
