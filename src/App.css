@@ -615,3 +615,44 @@ textarea {
     box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
   }
 }
+
+/* 🟢 FIX 3: MOBILE RESPONSIVENESS OVERRIDES */
+
+/* 1. Allow the main container to stretch and scroll */
+.cyber-container {
+    min-height: 100vh !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    padding-bottom: 90px !important; /* Make room for the footer */
+}
+
+/* 2. Prevent inner cards from trapping content */
+.home-layout, .game-layout, .setup-screen {
+    min-height: 100%;
+    height: auto !important;
+    overflow-y: visible !important;
+}
+
+/* 3. Mobile-Specific adjustments (Screens smaller than 768px) */
+@media (max-width: 768px) {
+    .menu-grid {
+        grid-template-columns: 1fr !important; /* Stack menu cards vertically */
+        gap: 15px !important;
+    }
+    
+    .listener-mode .setup-screen {
+        padding-bottom: 40px; /* Ensure bottom button is reachable */
+    }
+    
+    /* Make the footer stick to the bottom properly on scrolling */
+    .id-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(15, 23, 42, 0.95) !important;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+        border-top: 1px solid #334155;
+    }
+}
