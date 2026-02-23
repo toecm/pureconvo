@@ -94,9 +94,10 @@ const PRIVACY_STATEMENTS = [
 ];
 
 // --- ASSETS & HELPERS ---
-const getDoodleUrl = (k) => `https://loremflickr.com/400/200/${k},sketch/all?random=${Date.now()}`;
-const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all?random=${Date.now()}`;const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
+// 🟢 SPEED FIX: Switched to Picsum for ultra-fast CDN image delivery
+const getDoodleUrl = (k) => `https://picsum.photos/seed/${k}1/400/200`;
+const getPhotoUrl = (k) => `https://picsum.photos/seed/${k}2/400/200`;
+const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 // ==========================================
 // 📺 TUTORIAL MODAL
 // ==========================================
@@ -361,22 +362,41 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting, operator })
 // ⚡ GAME 2: SPEED CHAT 
 // ==========================================
 function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator }) {
-    const [gameStage, setGameStage] = useState("onboarding"); 
+    // 🟢 MEMORY FIX: Check localStorage first, fallback to "onboarding"
+    const [gameStage, setGameStage] = useState(() => {
+        return localStorage.getItem(`speed_stage_${userKey}`) || "onboarding";
+    }); 
+    
     const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
     const [loading, setLoading] = useState(false);
-    
     const clientRef = useRef(null);
 
-    const [mission, setMission] = useState({ 
-        text: greeting, 
-        subtext: "I'll be with you shortly...", 
-        image: getDoodleUrl("network") 
+    // 🟢 MEMORY FIX: Check localStorage for previous mission, fallback to greeting
+    const [mission, setMission] = useState(() => {
+        const savedMission = localStorage.getItem(`speed_mission_${userKey}`);
+        if (savedMission) {
+            try { return JSON.parse(savedMission); } catch (e) { console.error("Error parsing saved mission", e); }
+        }
+        return { 
+            text: greeting, 
+            subtext: "I'll be with you shortly...", 
+            image: getDoodleUrl("network") 
+        };
     });
 
     const [timeLeft, setTimeLeft] = useState(10);
     const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ audio: true });
-    
     const timerRef = useRef(null);
+
+    // 🟢 MEMORY FIX: Save gameStage to localStorage every time it changes
+    useEffect(() => {
+        localStorage.setItem(`speed_stage_${userKey}`, gameStage);
+    }, [gameStage, userKey]);
+
+    // 🟢 MEMORY FIX: Save mission to localStorage every time it changes
+    useEffect(() => {
+        localStorage.setItem(`speed_mission_${userKey}`, JSON.stringify(mission));
+    }, [mission, userKey]);
 
     useEffect(() => {
         const initClient = async () => {
@@ -405,12 +425,13 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
 
     const fetchMission = async (topic) => {
         setLoading(true);
-        setMission(prev => ({ ...prev, subtext: `Loading Topic: ${topic}...` }));
+        setMission(prev => ({ ...prev, subtext: `Establishing Neural Link for: ${topic}...` }));
         
         if (!clientRef.current) {
+            console.log("⚡ Client not ready, using instant fallback");
             const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
             setMission({ 
-                text: randomStarter, subtext: `Backup Protocol: ${topic}`, image: getDoodleUrl(topic) 
+                text: randomStarter, subtext: `Local Backup: ${topic}`, image: getDoodleUrl(topic) 
             }); 
             setGameStage("mission");
             setLoading(false);
@@ -418,7 +439,7 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
         }
 
         try {
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1500));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4500));
             const apiPromise = clientRef.current.predict("/generate_mission", [`Topic: ${topic}. User Nickname: ${nickname}. Ask a short, engaging question.`]);
 
             const res = await Promise.race([apiPromise, timeoutPromise]);
@@ -433,9 +454,10 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
             setGameStage("mission");
 
         } catch (e) { 
+            console.log("⚡ AI Lag detected, switching to fallback");
             const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
             setMission({ 
-                text: randomStarter, subtext: `Backup Protocol: ${topic}`, image: getDoodleUrl(topic) 
+                text: randomStarter, subtext: `Local Backup: ${topic}`, image: getDoodleUrl(topic) 
             }); 
             setGameStage("mission");
         }
@@ -449,28 +471,71 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
     };
 
     const handleNextRound = () => setGameStage("topic_select");
+    
+    // 🟢 MEMORY FIX: Clear all saved data when the user resets
     const handleReset = () => {
         if (window.confirm("Reset Speed Chat identity?")) {
             localStorage.removeItem("pure_nickname");
+            localStorage.removeItem(`speed_stage_${userKey}`);
+            localStorage.removeItem(`speed_mission_${userKey}`);
             setNickname("");
             setGameStage("onboarding");
+            setMission({ 
+                text: greeting, 
+                subtext: "I'll be with you shortly...", 
+                image: getDoodleUrl("network") 
+            });
         }
     };
 
     if (gameStage === "onboarding" && !localStorage.getItem("pure_nickname")) {
         return (
             <div className="game-layout">
-                <div className="mission-card" style={{display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', textAlign:'center'}}>
-                    <div className="icon-large">🕵️‍♂️</div>
-                    <h3>IDENTIFY YOURSELF</h3>
-                    <p>Enter a codename to start the session.</p>
+                <div className="mission-card" style={{
+                    display:'flex', 
+                    flexDirection:'column', 
+                    justifyContent:'center', 
+                    alignItems:'center', 
+                    textAlign:'center',
+                    background: '#1e293b', /* 🟢 Forces the dark cyber background */
+                    padding: '30px',
+                    borderRadius: '16px',
+                    border: '1px solid #334155',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                }}>
+                    <div className="icon-large" style={{fontSize: '3rem', marginBottom: '10px'}}>🕵️‍♂️</div>
+                    
+                    <h3 style={{margin: '0 0 10px 0', color: '#f472b6', letterSpacing: '1px'}}>
+                        IDENTIFY YOURSELF
+                    </h3>
+                    
+                    {/* 🟢 Forces the text to be a readable light gray */}
+                    <p style={{color: '#cbd5e1', fontSize: '14px', marginBottom: '20px'}}>
+                        Enter a codename to start the session.
+                    </p>
+                    
                     <input 
-                        className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} 
-                        placeholder="e.g. Maverick" style={{margin:'20px 0', textAlign:'center'}}
+                        className="cyber-input" 
+                        value={nickname} 
+                        onChange={e => setNickname(e.target.value)} 
+                        placeholder="e.g. Maverick" 
+                        style={{
+                            margin:'0 0 25px 0', 
+                            textAlign:'center',
+                            background: 'rgba(0,0,0,0.5)', /* Dark input field */
+                            color: '#ffffff',              /* White typing text */
+                            border: '1px solid #38bdf8',   /* Neon blue border */
+                            padding: '12px',
+                            borderRadius: '8px',
+                            width: '80%'
+                        }}
                     />
-                    <div className="action-row">
-                        <button className="cancel-btn" onClick={onBack}>BACK</button>
-                        <button className="cyber-button" onClick={startFirstRound} disabled={!nickname}>START MISSION</button>
+                    
+                    <div className="action-row" style={{display: 'flex', gap: '10px', width: '100%'}}>
+                        <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
+                        <button className="cyber-button" onClick={startFirstRound} disabled={!nickname} style={{flex: 2}}>
+                            START MISSION
+                        </button>
                     </div>
                 </div>
             </div>
@@ -513,9 +578,8 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
     return (
         <SharedGameLayout
             title={`CHAT: ${nickname.toUpperCase()}`} mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} dialects={dialects} userKey={userKey} setXP={setXP} onBack={onBack} timer={timeLeft} 
-            // 🟢 SOURCE FIX: Combine Game Name and Operator ID
-            onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat | Op: ${operator}`}
+            mediaBlob={mediaBlobUrl} dialects={dialects} userKey={userKey} operator={operator} setXP={setXP} onBack={onBack} timer={timeLeft} 
+            onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat`}
         />
     );
 }
@@ -788,7 +852,10 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
 // ==========================================
 // ⚙️ SHARED GAME LAYOUT 
 // ==========================================
-function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, dialects, userKey, setXP, onBack, onNext, timer, mode, sourceTag, onReset }) {
+// ==========================================
+// ⚙️ SHARED GAME LAYOUT 
+// ==========================================
+function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, dialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset }) {
     const [step, setStep] = useState("RECORD"); 
     const [transcribed, setTranscribed] = useState("");
     const [clarification, setClarification] = useState("");
@@ -811,7 +878,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
             setLastProcessedBlob(mediaBlob);
             handleAnalyze();
         }
-    }, [mediaBlob]);
+    }, [mediaBlob, step, lastProcessedBlob]); // 🟢 Fixed dependency array
 
     const handleAnalyze = async () => {
         if (!mediaBlob) return;
@@ -869,19 +936,22 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                     const audioFile = new File([blob], `capture_${Date.now()}.wav`, { type: "audio/wav" });
                     wrappedAudio = handle_file(audioFile);
                 } catch (audioError) {
-                    console.warn("Audio processing skipped/failed, proceeding with text only.", audioError);
+                    console.warn("Audio processing failed, text only.", audioError);
                 }
             }
             
+            // 🟢 FIX: Pack Operator ID securely into the userKey slot (Slot 10)
+            const finalUserSlot = operator ? `Op: ${operator}` : `Session: ${userKey}`;
+
             await app.predict("/check_and_submit_logic", [
                 transcribed, d, customD, clarification, tone, context, pragmatics,
-                sourceTag || "Unknown Game", "User/AI Hybrid", userKey, wrappedAudio, false
+                sourceTag || "Unknown Game", "User/AI Hybrid", finalUserSlot, wrappedAudio, false
             ]);
             
             setXP(p => p + 50);
             
             setStep("💎 Contribution Saved!"); 
-            setTranscribed("")
+            setTranscribed("");
             setClarification("");
             
             setTimeout(() => {
@@ -898,6 +968,8 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
             setStep("RECORD"); 
         }
     };
+
+    // ... (Keep your existing return JSX here exactly as it is) ...
 
     return (
         <div className="game-layout">
