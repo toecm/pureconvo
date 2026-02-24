@@ -192,27 +192,28 @@ function App() {
     const loadDialects = async () => {
         try {
             const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/get_dialects", []);
-            let dList;
-            const rawData = res.data[0];
-
-            if (Array.isArray(rawData)) { dList = rawData; } 
-            else if (typeof rawData === "string") {
-                try { dList = JSON.parse(rawData); } 
-                catch { dList = rawData.split(',').map(d => d.trim()); }
-            } else { dList = FALLBACK_DIALECTS; }
             
-            if (dList && dList.length > 0) {
-                const cleanList = dList.filter(d => {
-                    const lower = d.toLowerCase();
-                    return !lower.includes('.json') && !lower.includes('config') && !lower.includes('metadata') && !lower.endsWith('persona'); 
-                });
-                const displayList = cleanList.map(d => d.replace(/\.csv$/i, '').trim());
-                const uniqueList = [...new Set(displayList)].sort();
-                const finalList = uniqueList.filter(d => d !== "+ Add New Dialect");
-                finalList.push("+ Add New Dialect");
-                setDialects(finalList);
-            } else { setDialects(FALLBACK_DIALECTS); }
+            // 🟢 FIX 1: Match the exact Python function name
+            const res = await app.predict("/api_get_dialects", []); 
+            const rawData = res.data[0];
+            let parsedArray;
+
+            // 🟢 FIX 2: Safely parse the JSON string sent by Python
+            if (typeof rawData === "string") {
+                parsedArray = JSON.parse(rawData);
+            } else if (Array.isArray(rawData)) {
+                parsedArray = rawData; 
+            } else {
+                throw new Error("Invalid data format received");
+            }
+
+            // 🟢 FIX 3: Pass directly to state! Python already sorted and cleaned it.
+            if (parsedArray && parsedArray.length > 0) {
+                setDialects(parsedArray);
+            } else { 
+                setDialects(FALLBACK_DIALECTS); 
+            }
+            
         } catch (e) {
             console.warn("Dialect fetch issue:", e);
             setDialects(FALLBACK_DIALECTS);
@@ -362,16 +363,20 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting, operator })
 // ⚡ GAME 2: SPEED CHAT 
 // ==========================================
 function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator }) {
-    // 🟢 MEMORY FIX: Check localStorage first, fallback to "onboarding"
     const [gameStage, setGameStage] = useState(() => {
         return localStorage.getItem(`speed_stage_${userKey}`) || "onboarding";
     }); 
     
     const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
+    
+    // 🟢 FIX 1: Add state to remember their chosen dialect for the whole session
+    const [userDialect, setUserDialect] = useState(() => {
+        return localStorage.getItem("speed_dialect") || (dialects && dialects[0]) || "General";
+    });
+
     const [loading, setLoading] = useState(false);
     const clientRef = useRef(null);
 
-    // 🟢 MEMORY FIX: Check localStorage for previous mission, fallback to greeting
     const [mission, setMission] = useState(() => {
         const savedMission = localStorage.getItem(`speed_mission_${userKey}`);
         if (savedMission) {
@@ -388,12 +393,10 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
     const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ audio: true });
     const timerRef = useRef(null);
 
-    // 🟢 MEMORY FIX: Save gameStage to localStorage every time it changes
     useEffect(() => {
         localStorage.setItem(`speed_stage_${userKey}`, gameStage);
     }, [gameStage, userKey]);
 
-    // 🟢 MEMORY FIX: Save mission to localStorage every time it changes
     useEffect(() => {
         localStorage.setItem(`speed_mission_${userKey}`, JSON.stringify(mission));
     }, [mission, userKey]);
@@ -467,59 +470,65 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
     const startFirstRound = () => {
         if(!nickname) return;
         localStorage.setItem("pure_nickname", nickname);
+        localStorage.setItem("speed_dialect", userDialect); // 🟢 Save dialect to memory
         fetchMission("General"); 
     };
 
     const handleNextRound = () => setGameStage("topic_select");
     
-    // 🟢 MEMORY FIX: Clear all saved data when the user resets
     const handleReset = () => {
         if (window.confirm("Reset Speed Chat identity?")) {
             localStorage.removeItem("pure_nickname");
+            localStorage.removeItem("speed_dialect"); // 🟢 Clear dialect memory
             localStorage.removeItem(`speed_stage_${userKey}`);
             localStorage.removeItem(`speed_mission_${userKey}`);
             setNickname("");
             setGameStage("onboarding");
-            setMission({ 
-                text: greeting, 
-                subtext: "I'll be with you shortly...", 
-                image: getDoodleUrl("network") 
-            });
+            setMission({ text: greeting, subtext: "I'll be with you shortly...", image: getDoodleUrl("network") });
         }
     };
 
+    // 🟢 FIX 1: Updated Onboarding UI with Dialect Selector
     if (gameStage === "onboarding" && !localStorage.getItem("pure_nickname")) {
         return (
-            <div style={{ padding: '20px', backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '15vh' }}>
+            <div style={{ padding: '20px', backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '10vh' }}>
                 <div style={{ textAlign: 'center', fontSize: '3rem', marginBottom: '10px' }}>🕵️‍♂️</div>
                 <h2 style={{ color: '#f472b6', textAlign: 'center', marginBottom: '20px' }}>IDENTIFY YOURSELF</h2>
-                <p style={{ color: 'white', textAlign: 'center', marginBottom: '30px' }}>Enter a codename to start.</p>
+                <p style={{ color: '#cbd5e1', textAlign: 'center', marginBottom: '30px' }}>Enter your codename and target dialect.</p>
 
-                {/* 🟢 THE FIX: Input and Button are now locked side-by-side in the same row! */}
-                <div style={{ display: 'flex', gap: '10px', maxWidth: '400px', margin: '0 auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '400px', margin: '0 auto' }}>
                     <input 
                         value={nickname} 
                         onChange={e => setNickname(e.target.value)} 
                         placeholder="Codename..." 
-                        style={{ 
-                            flex: 1, padding: '15px', fontSize: '16px', borderRadius: '8px', 
-                            border: '2px solid #38bdf8', outline: 'none'
-                        }}
+                        style={{ padding: '15px', fontSize: '16px', borderRadius: '8px', border: '2px solid #38bdf8', outline: 'none' }}
                     />
+                    
+                    {/* The New Dialect Dropdown */}
+                    <select 
+                        value={userDialect} 
+                        onChange={e => setUserDialect(e.target.value)}
+                        style={{ padding: '15px', fontSize: '16px', borderRadius: '8px', border: '2px solid #38bdf8', outline: 'none', backgroundColor: 'white', color: 'black' }}
+                    >
+                        {dialects.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                        ))}
+                    </select>
+
                     <button 
                         onClick={startFirstRound} 
                         disabled={!nickname}
                         style={{ 
                             padding: '15px 25px', fontSize: '16px', fontWeight: 'bold', borderRadius: '8px',
-                            backgroundColor: nickname ? '#10b981' : '#64748b', /* Turns green when typing */
-                            color: 'white', border: 'none', cursor: 'pointer'
+                            backgroundColor: nickname ? '#10b981' : '#64748b', 
+                            color: 'white', border: 'none', cursor: 'pointer', marginTop: '10px'
                         }}
                     >
-                        GO
+                        START SESSION 🚀
                     </button>
                 </div>
 
-                <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                <div style={{ textAlign: 'center', marginTop: '30px' }}>
                     <button onClick={onBack} style={{ padding: '10px 20px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '8px' }}>
                         BACK TO MENU
                     </button>
@@ -528,25 +537,35 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
         );
     }
 
+    // 🟢 FIX 2 & 3: Better Text and Scrollable Reset Button
     if (gameStage === "topic_select") {
         return (
-            <div className="game-layout">
-                <div className="mission-card">
-                    <h3>🔄 MISSION COMPLETE</h3>
-                    <p>Select the next topic to discuss:</p>
+            <div className="game-layout" style={{ justifyContent: 'center', padding: '15px' }}>
+                <div className="mission-card" style={{ 
+                    overflowY: 'auto', 
+                    maxHeight: '75vh', 
+                    width: '100%', 
+                    maxWidth: '500px', 
+                    margin: '0 auto',
+                    padding: '20px'
+                }}>
+                    <h3 style={{ color: '#38bdf8', borderBottom: '1px solid #334155', paddingBottom: '10px', margin: '0 0 10px 0' }}>
+                        ⚡ CHAT LOGGED. CHOOSE NEXT.
+                    </h3>
+                    <p style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '15px' }}>Keep the flow going. Select a new target topic:</p>
                     
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '20px'}}>
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
                         {TOPIC_SUGGESTIONS.map(t => (
-                            <button key={t} className="cyber-button" style={{background: 'rgba(255,255,255,0.1)', fontSize:'12px'}} onClick={() => fetchMission(t)}>{t}</button>
+                            <button key={t} className="cyber-button" style={{background: 'rgba(255,255,255,0.05)', fontSize:'13px', padding: '12px'}} onClick={() => fetchMission(t)}>{t}</button>
                         ))}
                     </div>
                     
                     <div style={{marginTop: '20px', borderTop:'1px solid #334155', paddingTop:'15px'}}>
-                        <input className="cyber-input" placeholder="Or type a custom topic..." onKeyDown={(e) => { if(e.key === 'Enter') fetchMission(e.target.value); }}/>
+                        <input className="cyber-input" placeholder="Or type a custom topic..." onKeyDown={(e) => { if(e.key === 'Enter') fetchMission(e.target.value); }} style={{ width: '100%' }}/>
                     </div>
                     
-                    <button onClick={handleReset} style={{marginTop:'20px', background:'transparent', border:'1px solid #ef4444', color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', fontWeight:'bold', width:'100%'}}>
-                        🚫 CHANGE IDENTITY / RESET
+                    <button onClick={handleReset} style={{marginTop:'25px', background:'transparent', border:'1px solid #ef4444', color:'#ef4444', padding:'12px', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'bold', width:'100%'}}>
+                        🚫 CHANGE IDENTITY & DIALECT
                     </button>
                 </div>
             </div>
@@ -564,7 +583,8 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
     return (
         <SharedGameLayout
             title={`CHAT: ${nickname.toUpperCase()}`} mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} dialects={dialects} userKey={userKey} operator={operator} setXP={setXP} onBack={onBack} timer={timeLeft} 
+            // 🟢 The genius trick: Pass an array of ONLY the chosen dialect so SharedGameLayout locks it in!
+            mediaBlob={mediaBlobUrl} dialects={[userDialect]} userKey={userKey} operator={operator} setXP={setXP} onBack={onBack} timer={timeLeft} 
             onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat`}
         />
     );
@@ -974,20 +994,40 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                 </div>
             )}
             <div className="control-panel">
+                {/* 🟢 RECORDING UI: Now with a visible timer! */}
                 {step === "RECORD" && (
-                    <>
-                        <div className="dialect-selector">
-                            <label style={{fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px', letterSpacing: '1px', fontWeight: '600'}}>SELECT TARGET DIALECT (OR ADD NEW):</label>
-                            <select value={dialect} onChange={e => setDialect(e.target.value)}>{dialects.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                            {dialect === "+ Add New Dialect" && (<input className="cyber-input" placeholder="Enter Name (e.g. Toronto Slang)" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginTop:'8px'}}/>)}
-                        </div>
-                        <div className={`record-zone ${recStatus === "recording" ? "active" : ""}`}>
-                            {timer !== undefined && recStatus === "recording" && <div className="timer">{timer}s</div>}
-                            <button className={`record-btn ${recStatus === "recording" ? "pulsing" : ""}`} onMouseDown={startRec} onMouseUp={stopRec} onTouchStart={startRec} onTouchEnd={stopRec}>{recStatus === "recording" ? "🛑 RELEASE" : "🎙️ HOLD TO SPEAK"}</button>
-                        </div>
-                        <div className="action-row"><button className="cancel-btn" onClick={onBack}>BACK</button>
-                        </div>
-                    </>
+                    <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                        
+                        {/* THE COUNTDOWN DASHBOARD */}
+                        {timer !== undefined && recStatus === "recording" && (
+                            <div style={{ 
+                                fontSize: '28px', 
+                                fontWeight: 'bold', 
+                                /* Turns alert red when 3 seconds or less remain */
+                                color: timer <= 3 ? '#ef4444' : '#38bdf8', 
+                                marginBottom: '15px',
+                                textShadow: '0 0 10px rgba(56, 189, 248, 0.5)'
+                            }}>
+                                ⏱️ 00:{timer < 10 ? `0${timer}` : timer}
+                            </div>
+                        )}
+                        
+                        <button 
+                            className={`cyber-button ${recStatus === 'recording' ? 'recording' : ''}`}
+                            onPointerDown={startRec} 
+                            onPointerUp={stopRec}
+                            onTouchStart={startRec} /* Ensures mobile touch registers perfectly */
+                            onTouchEnd={stopRec}
+                            style={{ 
+                                width: '100%', 
+                                padding: '20px', 
+                                fontSize: '18px',
+                                backgroundColor: recStatus === 'recording' ? '#ef4444' : 'rgba(0,0,0,0.5)'
+                            }}
+                        >
+                            {recStatus === "recording" ? "🔴 RECORDING... RELEASE TO SEND" : "🎙️ HOLD TO SPEAK"}
+                        </button>
+                    </div>
                 )}
                 {(step === "ANALYZING" || step === "MINTING") && <div className="loading">PROCESSING...</div>}
                 {step === "REVIEW" && (
