@@ -53,8 +53,8 @@ const GAME_ASSETS = {
 const SPACE_URL = "toecm/PureConvo"; 
 
 const FALLBACK_DIALECTS = [
-  "African American Vernacular English", "American English", 
-  "Indian English", "Nigerian English", "Nigerian Pidgin English", 
+  "African American Vernacular English", "American English", "British English",
+  "Indian English", "Indonesian English", "Korean ENglish", "Malaysian English", "Nigerian English", "Nigerian Pidgin English", "South African English",
   "+ Add New Dialect"
 ];
 
@@ -855,9 +855,7 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
     );
 }
 
-// ==========================================
-// ⚙️ SHARED GAME LAYOUT 
-// ==========================================
+
 // ==========================================
 // ⚙️ SHARED GAME LAYOUT 
 // ==========================================
@@ -866,7 +864,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
     const [transcribed, setTranscribed] = useState("");
     const [clarification, setClarification] = useState("");
     const [tone, setTone] = useState("Neutral / Conversational"); 
-    const [context, setContext] = useState("General");
+    const [context, setContext] = useState("");
     const [pragmatics, setPragmatics] = useState("");
     const [isRegenerating, setIsRegenerating] = useState(false); 
     const [dialect, setDialect] = useState(dialects[0] || "General");
@@ -975,7 +973,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
         }
     };
 
-    // ... (Keep your existing return JSX here exactly as it is) ...
+    
 
     return (
         <div className="game-layout">
