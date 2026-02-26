@@ -13,10 +13,10 @@ const GAME_ASSETS = {
         instructions: [
             "1. Introduce Yourself: Say your name.",
             "2. Speak Naturally: Answer Echo's questions.",
-	    "3a. Confirm: Okay with the generated texts? Confirm, or (3b)",
+            "3a. Confirm: Okay with the generated texts? Confirm, or (3b)",
             "3b. Edit: Correct the transcript of what you said.",
-	    "4. Verify: Click on UPDATE MEANING to reload the meaning.",
-	    "5. Re-Train: Make corrections to the reloaded meaning.",
+            "4. Verify: Click on UPDATE MEANING to reload the meaning.",
+            "5. Re-Train: Make corrections to the reloaded meaning.",
             "6. Mint: Save your unique dialect data."
         ]
     },
@@ -86,7 +86,7 @@ const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ==========================================
-// 🟢 FIX 1: ETHICAL AI CONSENT SCREEN (Expanded for PhD IRB Compliance)
+// 🟢 ETHICAL AI CONSENT SCREEN
 // ==========================================
 function ConsentScreen({ onConsent }) {
     return (
@@ -105,24 +105,12 @@ function ConsentScreen({ onConsent }) {
                 <p style={{ textAlign: 'center', marginBottom: '15px' }}>Before proceeding, please acknowledge:</p>
                 
                 <ul style={{ paddingLeft: '15px', marginBottom: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <li>
-                        <strong style={{color: '#34d399'}}>Voluntary & Purpose-Driven:</strong> Participation is entirely voluntary. Though designed as a game, your input directly combats WEIRD (Western, Educated, Industrialized, Rich, and Democratic) bias in AI data.
-                    </li>
-                    <li>
-                        <strong style={{color: '#facc15'}}>The Ultimate Goal:</strong> You are actively helping to train future Large Language Models (LLMs) that truly understand, respect, and globalize the English or Creole spoken by your specific community.
-                    </li>
-                    <li>
-                        <strong style={{color: '#a78bfa'}}>Earn Authority:</strong> By contributing, you earn reputation tokens that increase your rank, eventually empowering you as a recognized authority to verify and approve future contributions for your group's English/Creole.
-                    </li>
-                    <li>
-                        <strong style={{color: '#f472b6'}}>Review Process:</strong> All game contributions are subject to lab and peer approval before being officially minted.
-                    </li>
-                    <li>
-                        <strong style={{color: '#38bdf8'}}>Privacy & Provenance:</strong> You remain entirely anonymous. No personally identifiable information (PII) beyond your voice and dialect is stored. Approved data is cryptographically secured on the Purechain ledger to guarantee ethical ownership.
-                    </li>
-                    <li>
-                        <strong style={{color: '#ef4444'}}>Your Data Rights:</strong> You maintain the absolute right to request the deletion of your data at any time via the Lab Admin.
-                    </li>
+                    <li><strong style={{color: '#34d399'}}>Voluntary & Purpose-Driven:</strong> Participation is entirely voluntary. Though designed as a game, your input directly combats WEIRD (Western, Educated, Industrialized, Rich, and Democratic) bias in AI data.</li>
+                    <li><strong style={{color: '#facc15'}}>The Ultimate Goal:</strong> You are actively helping to train future Large Language Models (LLMs) that truly understand, respect, and globalize the English or Creole spoken by your specific community.</li>
+                    <li><strong style={{color: '#a78bfa'}}>Earn Authority:</strong> By contributing, you earn reputation tokens that increase your rank, eventually empowering you as a recognized authority to verify and approve future contributions for your group's English/Creole.</li>
+                    <li><strong style={{color: '#f472b6'}}>Review Process:</strong> All game contributions are subject to lab and peer approval before being officially minted.</li>
+                    <li><strong style={{color: '#38bdf8'}}>Privacy & Provenance:</strong> You remain entirely anonymous. No personally identifiable information (PII) beyond your voice and dialect is stored. Approved data is cryptographically secured on the Purechain ledger to guarantee ethical ownership.</li>
+                    <li><strong style={{color: '#ef4444'}}>Your Data Rights:</strong> You maintain the absolute right to request the deletion of your data at any time via the Lab Admin.</li>
                 </ul>
             </div>
             
@@ -138,7 +126,6 @@ function ConsentScreen({ onConsent }) {
 // ==========================================
 function GameTutorial({ gameKey, onStart, onCancel }) {
     const asset = GAME_ASSETS[gameKey];
-    // 🟢 FIX 8: State to manage mute toggle so users can hear the video on click
     const [isMuted, setIsMuted] = useState(true);
 
     if (!asset) return null;
@@ -157,7 +144,6 @@ function GameTutorial({ gameKey, onStart, onCancel }) {
             }}>
                 <h2 style={{color: asset.color, margin: '0 0 15px 0'}}>HOW TO PLAY</h2>
                 
-                {/* 🟢 FIX 8: Clickable video with un-mute overlay instruction */}
                 <div 
                     style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '10px', border: '1px solid #334155', background: '#000', position: 'relative', cursor: 'pointer' }}
                     onClick={() => setIsMuted(!isMuted)}
@@ -185,18 +171,105 @@ function GameTutorial({ gameKey, onStart, onCancel }) {
 }
 
 // ==========================================
+// 🛡️ SECURE FEEDBACK MODAL
+// ==========================================
+function FeedbackModal({ onClose }) {
+    const [opId, setOpId] = useState("");
+    const [feedback, setFeedback] = useState("");
+    const [image, setImage] = useState(null);
+    const [status, setStatus] = useState("");
+
+    const handleSubmit = async () => {
+        if (!feedback) { setStatus("⚠️ Please enter feedback text."); return; }
+        setStatus("⏳ Encrypting and Sending...");
+        
+        try {
+            const app = await Client.connect(SPACE_URL);
+            let wrappedImage = null;
+            if (image) {
+                const imgFile = new File([image], `bug_${Date.now()}.png`, { type: image.type });
+                wrappedImage = handle_file(imgFile);
+            }
+            
+            await app.predict("/submit_feedback", [
+                opId || "Anonymous", 
+                feedback, 
+                wrappedImage
+            ]);
+            
+            setStatus("✅ Report securely submitted.");
+            setTimeout(onClose, 2000);
+        } catch (e) {
+            setStatus("❌ Failed to send. Network error.");
+        }
+    };
+
+    return (
+        <div className="tutorial-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.95)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+            <div className="mission-card" style={{ background: '#1e293b', padding: '20px', borderRadius: '15px', border: '1px solid #a78bfa', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', height: 'auto' }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+                    <h3 style={{color: '#a78bfa', margin: 0}}>SECURE FEEDBACK</h3>
+                    <button onClick={onClose} style={{background: 'transparent', border: 'none', color: '#ef4444', fontSize: '18px', cursor: 'pointer'}}>✖</button>
+                </div>
+                
+                <div style={{background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', borderLeft: '3px solid #38bdf8', marginBottom: '15px', fontSize: '12px', color: '#cbd5e1'}}>
+                    <strong>💡 PRO TIP:</strong> Tap and hold your <span style={{color: '#38bdf8'}}>OPERATOR ID</span> at the very bottom of the main screen to copy it, then paste it below to help us track your specific session bugs.
+                </div>
+
+                <label style={{fontSize: '11px', color: '#94a3b8', marginBottom: '5px'}}>OPERATOR ID (Optional)</label>
+                <input className="cyber-input" placeholder="Paste ID here..." value={opId} onChange={e => setOpId(e.target.value)} style={{marginBottom: '15px'}} />
+
+                <label style={{fontSize: '11px', color: '#94a3b8', marginBottom: '5px'}}>ISSUE OR SUGGESTION</label>
+                <textarea value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Describe what happened..." style={{marginBottom: '15px', height: '80px', width: '90%'}} />
+
+                <label style={{fontSize: '11px', color: '#94a3b8', marginBottom: '5px'}}>UPLOAD SCREENSHOT (Proof)</label>
+                <input type="file" accept="image/*" onChange={e => setImage(e.target.files[0])} style={{marginBottom: '20px', color: '#94a3b8', fontSize: '12px'}} />
+
+                <button className="cyber-button" onClick={handleSubmit} disabled={status.includes("⏳") || status.includes("✅")} style={{background: '#a78bfa', color: '#000'}}>
+                    {status || "SEND SECURE REPORT"}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ==========================================
 // 🚀 MAIN APP COMPONENT
 // ==========================================
 function App() {
   const [hasConsented, setHasConsented] = useState(() => localStorage.getItem("pureversation_consented") === "true");
+  
+  // 🟢 FIX: Moved showFeedback inside the App component
+  const [showFeedback, setShowFeedback] = useState(false);
+  
   const [activeGame, setActiveGame] = useState("HOME"); 
   const [cloudStatus, setCloudStatus] = useState("⚪ CHECKING SYNC...");
   const [userKey, setUserKey] = useState(null);
-  const [xp, setXP] = useState(0);
+  const [xp, setXP] = useState(() => parseInt(localStorage.getItem("pureconvo_xp")) || 0);
+  
+  useEffect(() => {
+      localStorage.setItem("pureconvo_xp", xp);
+  }, [xp]);
+
+  const getRank = (points) => {
+      if (points < 100) return "Initiate";
+      if (points < 300) return "Scout";
+      if (points < 800) return "Linguist";
+      if (points < 1500) return "Archivist";
+      return "Oracle";
+  };
+  
   const [address, setAddress] = useState("");
   const [dialects, setDialects] = useState(FALLBACK_DIALECTS);
   const [greeting, setGreeting] = useState(""); 
   const [isPulsing, setIsPulsing] = useState(false);
+
+  // 🟢 FIX: Add Event Listener to catch custom open-feedback triggers from the games
+  useEffect(() => {
+      const openFb = () => setShowFeedback(true);
+      window.addEventListener('open-feedback', openFb);
+      return () => window.removeEventListener('open-feedback', openFb);
+  }, []);
 
   useEffect(() => {
     let sessionID = localStorage.getItem("pureversation_session_id");
@@ -250,13 +323,19 @@ function App() {
     <div className="App">
       <div className="cyber-container">
         
-        {/* 🟢 FIX 1: Show consent screen before anything else loads */}
+        {/* 🟢 FIX: Render FeedbackModal here when toggled */}
+        {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+        
         {!hasConsented ? (
             <ConsentScreen onConsent={() => { setHasConsented(true); localStorage.setItem("pureversation_consented", "true"); }} />
         ) : (
             <>
                 <div className="hud-header">
-                    <div className="xp-badge">✨ {xp} XP</div>
+                    <div className="xp-badge" style={{display: 'flex', gap: '5px', alignItems: 'center'}}>
+                        <span>✨ {xp} XP</span>
+                        <span style={{opacity: 0.5}}>|</span>
+                        <span style={{color: '#a78bfa', fontWeight: '900'}}>{getRank(xp)}</span>
+                    </div>
                     <div className="status-badge" style={{marginLeft: '10px', background: 'rgba(0,0,0,0.5)'}}>☁️ {cloudStatus}</div>
                     <div className="status-badge" style={{marginLeft: 'auto'}}>MODE: {activeGame}</div>
                 </div>
@@ -338,7 +417,6 @@ function HomeMenu({ onSelect, greeting }) {
 // ==========================================
 function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
     const [mission, setMission] = useState({ text: greeting, subtext: "Retrieving Archive Topic...", image: getDoodleUrl("abstract") });
-    // 🟢 FIX 7: Extracted clearBlobUrl to pass down for proper retries
     const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
     
     const loadNextTopic = async () => {
@@ -366,7 +444,6 @@ function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting
         <SharedGameLayout
             title="ARCHIVE ENTRY" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
             mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} setXP={setXP} 
-            // 🟢 FIX 5: Added onReset so they can skip/refresh topics
             onBack={onBack} onReset={() => { if(window.confirm("Skip this topic?")) loadNextTopic(); }}
             onNext={loadNextTopic} sourceTag={`Game: Archivist | Op: ${operator}`} operator={operator}
         />
@@ -391,42 +468,32 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
     const [timeLeft, setTimeLeft] = useState(10);
     const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
     
-    // 🟢 NEW: Use Refs to isolate the timer from React's re-render loops
     const timerRef = useRef(null);
     const stopRecordingRef = useRef(stopRecording); 
 
-    // Keep the ref updated with the latest stop function silently
     useEffect(() => {
         stopRecordingRef.current = stopRecording;
     }, [stopRecording]);
 
-    // 🟢 FIXED: Bulletproof Timer Logic
     useEffect(() => {
         if (status === "recording") {
             setTimeLeft(10);
-            
-            // Start the countdown
             timerRef.current = setInterval(() => {
                 setTimeLeft(prevTime => {
                     if (prevTime <= 1) { 
                         clearInterval(timerRef.current); 
-                        stopRecordingRef.current(); // Fire the stop function safely
+                        stopRecordingRef.current(); 
                         return 0; 
                     }
                     return prevTime - 1;
                 });
             }, 1000);
-            
         } else { 
-            // If they release the button early, clear the timer and reset the clock
             clearInterval(timerRef.current); 
             setTimeLeft(10);
         }
-        
-        // Cleanup function if the component unmounts
         return () => clearInterval(timerRef.current);
-        
-    }, [status]); // 👈 The magic fix: It NOW ONLY watches 'status', nothing else!
+    }, [status]);
 
     const fetchMission = async (topic) => {
         setLoading(true);
@@ -501,7 +568,6 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
 // ==========================================
 function GameVisionQuest({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
     const [mission, setMission] = useState({ text: greeting, subtext: "Calibrating Optical Sensors...", image: getPhotoUrl("cyberpunk") });
-    // 🟢 FIX 7: Extracted clearBlobUrl
     const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
 
     const loadNewImage = () => {
@@ -534,7 +600,6 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
     const [isRegenerating, setIsRegenerating] = useState(false); 
     const [dialect, setDialect] = useState(dialects[0] || "General");
     
-    // 🟢 MAKE SURE THESE 3 LINES ARE ALL HERE:
     const [customD, setCustomD] = useState("");
     const [captcha, setCaptcha] = useState("");
     const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
@@ -543,7 +608,6 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
         if (dialects.length > 0 && !dialects.includes(dialect)) { setDialect(dialects[0]); }
     }, [dialects]);
 
-    // Scramble the math every time they open the Add Dialect menu
     useEffect(() => {
         if (dialect === "+ Add New Dialect") {
             setCaptchaMath({
@@ -601,7 +665,6 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
     };
 
     const handleSubmit = async () => {
-        // 🟢 FIX 2: Dynamic Security Check
         if (dialect === "+ Add New Dialect") {
             if (!customD.trim()) { alert("Please type a new dialect name."); return; }
             if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
@@ -628,7 +691,6 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                 sourceTag || "Unknown Game", "User/AI Hybrid", finalOperatorId, wrappedAudio, false
             ]);
             setXP(p => p + 50);
-	    // 🟢 FIX: Instantly add the custom dialect to the local UI state
             if (customD && dialect === "+ Add New Dialect") {
                 setDialects(prev => {
                     const clean = prev.filter(d => d !== "+ Add New Dialect");
@@ -653,7 +715,6 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
 
     return (
         <div className="game-layout">
-            {/* 🟢 FIX 5 & 6: Unified Header with Back & Reset Buttons for all games */}
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: '10px'}}>
                 <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                     {onBack && <button className="back-icon" onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px', padding:'0'}} title="Back to Menu">🏠←</button>}
@@ -679,8 +740,6 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
             )}
             
             <div className="control-panel">
-                
-                {/* 🟢 FIX 7: Dialect selection placed BEFORE recording so it applies to Vision Quest immediately */}
                 {(step === "RECORD" || step === "REVIEW") && (
                     <div className="dialect-selector" style={{marginBottom: '10px'}}>
                         <label>PLEASE CHOOSE OR ADD YOUR TARGET ENGLISH/CREOLE DIALECT.</label>
@@ -688,7 +747,6 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                             {dialects.map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
                         
-                        {/* 🟢 FIX 2: Render Dynamic Captcha */}
                         {dialect === "+ Add New Dialect" && (
                             <div style={{marginTop: '10px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
                                 <input className="cyber-input" placeholder="Enter Dialect Name (e.g. Scottish Gaelic)" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
@@ -727,19 +785,25 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                         <div className="input-group"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'5px'}}><label style={{margin:0}}>MEANING:</label><button onClick={handleRegenerate} disabled={isRegenerating} style={{background: 'transparent', border: '1px solid #38bdf8', color: '#38bdf8', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer'}}>{isRegenerating ? "UPDATING..." : "🔄 REGENERATE FROM TEXT"}</button></div><textarea value={clarification} onChange={e => setClarification(e.target.value)} /></div>
                         <div className="input-group"><label>TONE:</label><select value={tone} onChange={e => setTone(e.target.value)}>{TONES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                         <div className="action-row">
-                            {/* 🟢 FIX 7: Correctly clears blob URL on Retry to reset the caching logic */}
                             <button className="cancel-btn" onClick={() => { if(clearBlobUrl) clearBlobUrl(); setLastProcessedBlob(null); setStep("RECORD"); }}>RETRY</button>
                             <button className="cyber-button" onClick={handleSubmit}>MINT (+50 XP)</button>
                         </div>
                     </div>
                 )}
+                
+                {/* 🟢 FIX: Call the CustomEvent to open the Feedback Modal */}
+                <div style={{textAlign: 'center', marginTop: '15px', paddingBottom: '10px'}}>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('open-feedback'))} style={{background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer'}}>
+                        💬 Submit Secure Feedback
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
 
 // ==========================================
-// 👂 GAME 4: THE LISTENER (Omitted unchanging logic for brevity, but includes Captcha fix)
+// 👂 GAME 4: THE LISTENER 
 // ==========================================
 function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, operator }) {
     const loadSavedData = () => { const saved = localStorage.getItem("echo_memory_" + userKey); return saved ? JSON.parse(saved) : null; };
@@ -758,7 +822,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
     const [isRegenerating, setIsRegenerating] = useState(false);
     const chatEndRef = useRef(null);
 
-    // 🟢 FIX 2: Listener Dynamic Captcha States
     const [customD, setCustomD] = useState("");
     const [captcha, setCaptcha] = useState("");
     const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
@@ -816,7 +879,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
     };
 
     const startSession = () => { 
-        // 🟢 FIX 2: Security check for Listener Mode
         if (setup.userDialect === "+ Add New Dialect") {
             if (!customD.trim()) { alert("Please type a new dialect name."); return; }
             if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
@@ -825,7 +887,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
             }
             setSetup({...setup, userDialect: customD});
             
-            // Instantly inject the new dialect into the app state
             setDialects(prev => {
                 const clean = prev.filter(d => d !== "+ Add New Dialect");
                 return Array.from(new Set([customD, ...clean, "+ Add New Dialect"]));
@@ -936,7 +997,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
                     <div className="icon-large">🎛️</div><h3>CONFIGURE ECHO</h3>
                     <div className="setup-row"><label>YOUR DIALECT</label><select value={setup.userDialect} onChange={e => setSetup({...setup, userDialect: e.target.value})}>{dialects.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                     
-                    {/* 🟢 FIX 2: Render Dynamic Captcha in Listener */}
                     {setup.userDialect === "+ Add New Dialect" && (
                         <div className="setup-row" style={{background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
                             <input className="cyber-input" placeholder="New Dialect Name" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
@@ -982,7 +1042,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
                         )}
                         {phase === "verify" && (
                             <div className="verify-card">
-                                {/* 🟢 FIX: Added the audio player to The Listener verify phase */}
                                 <div className="audio-preview" style={{marginBottom: '15px', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '12px', border: '1px solid #334155'}}>
                                     <label style={{fontSize:'10px', color:'#94a3b8', display:'block', marginBottom:'5px', letterSpacing: '1px'}}>REVIEW YOUR AUDIO:</label>
                                     <audio src={mediaBlobUrl} controls style={{width: '100%', height: '35px', borderRadius: '8px', outline: 'none'}} />
@@ -1007,6 +1066,13 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
                                 </div>
                             </div>
                         )}
+                        
+                        {/* 🟢 FIX: Call the CustomEvent to open the Feedback Modal */}
+                        <div style={{textAlign: 'center', marginTop: '15px', paddingBottom: '10px'}}>
+                            <button onClick={() => window.dispatchEvent(new CustomEvent('open-feedback'))} style={{background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer'}}>
+                                💬 Submit Secure Feedback
+                            </button>
+                        </div>
                     </div>
                 </>
             )}
