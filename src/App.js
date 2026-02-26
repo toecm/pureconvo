@@ -86,19 +86,18 @@ const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ==========================================
-// 🟢 FIX 1: ETHICAL AI CONSENT SCREEN (Mobile Safe)
+// 🟢 FIX 1: ETHICAL AI CONSENT SCREEN (Expanded for PhD IRB Compliance)
 // ==========================================
 function ConsentScreen({ onConsent }) {
     return (
-        // Added top padding and margin so it clears mobile notch/status bars
-        <div className="setup-screen" style={{ textAlign: 'center', padding: '40px 20px 20px 20px', overflowY: 'auto' }}>
-            <div className="icon-large" style={{ fontSize: '45px', marginTop: '20px' }}>⚖️</div>
-            <h2 style={{ color: '#38bdf8', letterSpacing: '1px', fontSize: '22px', marginBottom: '15px' }}>ETHICAL AI CONSENT</h2>
+        <div className="setup-screen" style={{ textAlign: 'center', padding: '30px', overflowY: 'auto' }}>
+            <div className="icon-large" style={{ fontSize: '50px', marginTop: '20px' }}>⚖️</div>
+            <h2 style={{ color: '#38bdf8', letterSpacing: '1px', fontSize: '20px' }}>ETHICAL AI CONSENT</h2>
             
             <div style={{ 
-                textAlign: 'left', fontSize: '13px', lineHeight: '1.6', 
-                background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '12px', 
-                border: '1px solid #334155', marginBottom: '25px', color: '#cbd5e1' 
+                textAlign: 'left', fontSize: '12px', lineHeight: '1.5', 
+                background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '12px', 
+                border: '1px solid #334155', marginBottom: '20px', color: '#cbd5e1' 
             }}>
                 <p style={{ marginTop: 0, color: '#f8fafc', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>
                     Welcome to the PureConvo Research Registry.
