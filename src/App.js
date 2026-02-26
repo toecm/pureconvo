@@ -389,37 +389,44 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
     });
 
     const [timeLeft, setTimeLeft] = useState(10);
-    // 🟢 FIX 7: Extracted clearBlobUrl
     const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
+    
+    // 🟢 NEW: Use Refs to isolate the timer from React's re-render loops
     const timerRef = useRef(null);
+    const stopRecordingRef = useRef(stopRecording); 
 
-    useEffect(() => { localStorage.setItem(`speed_stage_${userKey}`, gameStage); }, [gameStage, userKey]);
-    useEffect(() => { localStorage.setItem(`speed_mission_${userKey}`, JSON.stringify(mission)); }, [mission, userKey]);
-
+    // Keep the ref updated with the latest stop function silently
     useEffect(() => {
-        const initClient = async () => { try { clientRef.current = await Client.connect(SPACE_URL); } catch (e) {} };
-        initClient();
-    }, []);
+        stopRecordingRef.current = stopRecording;
+    }, [stopRecording]);
 
-    // 🟢 FIX 4: Bulletproof Timer Logic
+    // 🟢 FIXED: Bulletproof Timer Logic
     useEffect(() => {
         if (status === "recording") {
             setTimeLeft(10);
+            
+            // Start the countdown
             timerRef.current = setInterval(() => {
-                setTimeLeft(p => {
-                    if (p <= 1) { 
+                setTimeLeft(prevTime => {
+                    if (prevTime <= 1) { 
                         clearInterval(timerRef.current); 
-                        stopRecording(); // Automatically stops when timer hits 0
+                        stopRecordingRef.current(); // Fire the stop function safely
                         return 0; 
                     }
-                    return p - 1;
+                    return prevTime - 1;
                 });
             }, 1000);
+            
         } else { 
+            // If they release the button early, clear the timer and reset the clock
             clearInterval(timerRef.current); 
+            setTimeLeft(10);
         }
+        
+        // Cleanup function if the component unmounts
         return () => clearInterval(timerRef.current);
-    }, [status, stopRecording]);
+        
+    }, [status]); // 👈 The magic fix: It NOW ONLY watches 'status', nothing else!
 
     const fetchMission = async (topic) => {
         setLoading(true);
