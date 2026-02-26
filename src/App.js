@@ -295,7 +295,9 @@ function App() {
 
     let opAddr = localStorage.getItem("pureversation_operator_addr");
     if (!opAddr) {
-        opAddr = "0x" + uuidv4().replace(/-/g, "").slice(0, 40);
+        // 🟢 FIX: Combine two UUIDs to guarantee we have enough hex characters to make a 42-char address
+        const validHex = (uuidv4().replace(/-/g, "") + uuidv4().replace(/-/g, "")).slice(0, 40);
+        opAddr = "0x" + validHex;
         localStorage.setItem("pureversation_operator_addr", opAddr);
     }
     setAddress(opAddr);
