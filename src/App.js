@@ -86,12 +86,12 @@ const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ==========================================
-// 🟢 ETHICAL AI CONSENT SCREEN
+// 🟢 FIX 1: ETHICAL AI CONSENT SCREEN (Expanded with Tokenomics & Slashing)
 // ==========================================
 function ConsentScreen({ onConsent }) {
     return (
         <div className="setup-screen" style={{ textAlign: 'center', padding: '15px', overflowY: 'auto' }}>
-            <div className="icon-large" style={{ fontSize: '50px', marginTop: '220px' }}>⚖️</div>
+            <div className="icon-large" style={{ fontSize: '50px', marginTop: '380px' }}>⚖️</div>
             <h2 style={{ color: '#38bdf8', letterSpacing: '1px', fontSize: '20px' }}>ETHICAL AI CONSENT</h2>
             
             <div style={{ 
@@ -102,15 +102,31 @@ function ConsentScreen({ onConsent }) {
                 <p style={{ marginTop: 0, color: '#f8fafc', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>
                     Welcome to the PureVersation Research Registry.
                 </p>
-                <p style={{ textAlign: 'center', marginBottom: '15px' }}>Before proceeding, please acknowledge:</p>
+                <p style={{ textAlign: 'center', marginBottom: '15px' }}>Before proceeding, please acknowledge our rules and mechanics:</p>
                 
                 <ul style={{ paddingLeft: '15px', marginBottom: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <li><strong style={{color: '#34d399'}}>Voluntary & Purpose-Driven:</strong> Participation is entirely voluntary. Though designed as a game, your input directly combats WEIRD (Western, Educated, Industrialized, Rich, and Democratic) bias in AI data.</li>
-                    <li><strong style={{color: '#facc15'}}>The Ultimate Goal:</strong> You are actively helping to train future Large Language Models (LLMs) that truly understand, respect, and globalize the English or Creole spoken by your specific community.</li>
-                    <li><strong style={{color: '#a78bfa'}}>Earn Authority:</strong> By contributing, you earn reputation tokens that increase your rank, eventually empowering you as a recognized authority to verify and approve future contributions for your group's English/Creole.</li>
-                    <li><strong style={{color: '#f472b6'}}>Review Process:</strong> All game contributions are subject to lab and peer approval before being officially minted.</li>
-                    <li><strong style={{color: '#38bdf8'}}>Privacy & Provenance:</strong> You remain entirely anonymous. No personally identifiable information (PII) beyond your voice and dialect is stored. Approved data is cryptographically secured on the Purechain ledger to guarantee ethical ownership.</li>
-                    <li><strong style={{color: '#ef4444'}}>Your Data Rights:</strong> You maintain the absolute right to request the deletion of your data at any time via the Lab Admin.</li>
+                    <li>
+                        <strong style={{color: '#34d399'}}>Voluntary & Purpose-Driven:</strong> Participation is entirely voluntary. Though designed as a game, your input directly combats WEIRD (Western, Educated, Industrialized, Rich, and Democratic) bias in AI data.
+                    </li>
+                    <li>
+                        <strong style={{color: '#facc15'}}>The Ultimate Goal:</strong> You are actively helping to train future Large Language Models (LLMs) that truly understand, respect, and globalize the English or Creole spoken by your specific community.
+                    </li>
+                    <li>
+                        <strong style={{color: '#a78bfa'}}>Earn Authority (Ranks):</strong> You earn Reputation XP for contributing and verifying data, permanently upgrading your on-chain rank: 
+                        <br/><span style={{opacity: 0.8, fontSize: '11px'}}>▶ Initiate (0 XP) ➔ Scout (100 XP) ➔ Linguist (300 XP) ➔ Archivist (800 XP) ➔ Oracle (1500+ XP)</span>
+                    </li>
+                    <li>
+                        <strong style={{color: '#38bdf8'}}>Rewards & Consensus:</strong> You earn <strong>+10 XP</strong> instantly for validating peer data. If an entry you submit reaches consensus (verified by peers/admin), you receive a massive <strong>+50 XP</strong> reward.
+                    </li>
+                    <li>
+                        <strong style={{color: '#ef4444'}}>Quality Control & Penalties:</strong> To protect the integrity of the data, a "Slashing" mechanism is enforced. If you submit spam, fake, or incorrect data that is rejected by peers or the Lab Admin, you will lose <strong>-10 XP</strong>, which can result in a rank demotion.
+                    </li>
+                    <li>
+                        <strong style={{color: '#f472b6'}}>Privacy & Provenance:</strong> You remain entirely anonymous. No personally identifiable information (PII) beyond your voice and dialect is stored. Approved data is cryptographically secured on the Purechain ledger.
+                    </li>
+                    <li>
+                        <strong style={{color: '#cbd5e1'}}>Your Data Rights:</strong> You maintain the absolute right to request the deletion of your data at any time via the Lab Admin using your unique Operator ID.
+                    </li>
                 </ul>
             </div>
             
