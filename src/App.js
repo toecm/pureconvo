@@ -7,8 +7,8 @@ import './App.css';
 // --- 🎨 GAME ASSETS ---
 const GAME_ASSETS = {
     LISTENER: {
-        image: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/the%20listener%203.png",
-        video: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/the%20listener%20vid.mp4",
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20mobile.jpg",
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20vid.mp4",
         color: "#38bdf8",
         instructions: [
             "1. Introduce Yourself: Say your name.",
@@ -21,8 +21,8 @@ const GAME_ASSETS = {
         ]
     },
     ARCHIVIST: {
-        image: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/the%20archivist%203.jpg",
-        video: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/the%20archivist%20vid.mp4",
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20mobile.jpg",
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20vid.mp4",
         color: "#facc15",
         instructions: [
             "1. Get a Topic: The Archivist gives you a theme.",
@@ -31,8 +31,8 @@ const GAME_ASSETS = {
         ]
     },
     SPEED: {
-        image: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/speed%20chat%203.jpg",
-        video: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/speed%20chat%20vid.mp4",
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/speed%20chat%20mobile.jpg",
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/speed%20chat%20vid.mp4",
         color: "#f472b6",
         instructions: [
             "1. Watch the Timer: You have 10 seconds.",
@@ -41,8 +41,8 @@ const GAME_ASSETS = {
         ]
     },
     VISION: {
-        image: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/vision%20quest%203.jpg",
-        video: "https://huggingface.co/spaces/toecm/PureConvo/resolve/main/assets/vision%20quest%20vid.mp4",
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/vision%20quest%20mobile.jpg",
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/vision%20quest%20vid.mp4",
         color: "#a78bfa",
         instructions: [
             "1. Observe: Look at the image provided.",
@@ -53,7 +53,7 @@ const GAME_ASSETS = {
 };
 
 // --- CONFIGURATION ---
-const SPACE_URL = "toecm/PureConvo"; 
+const SPACE_URL = "toecm/PureVersation"; 
 
 const FALLBACK_DIALECTS = [
   "African American Vernacular English", "American English", "British English", "Gullah Creole", "Indian English", "Indonesian English", "Jamican Patois Creole", "Korean English", "Malaysian English", "Nigerian English", "Nigerian Pidgin English", "South African English",
@@ -100,7 +100,7 @@ function ConsentScreen({ onConsent }) {
                 border: '1px solid #334155', marginBottom: '20px', color: '#cbd5e1' 
             }}>
                 <p style={{ marginTop: 0, color: '#f8fafc', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>
-                    Welcome to the PureConvo Research Registry.
+                    Welcome to the PureVersation Research Registry.
                 </p>
                 <p style={{ textAlign: 'center', marginBottom: '15px' }}>Before proceeding, please acknowledge:</p>
                 
@@ -188,7 +188,7 @@ function GameTutorial({ gameKey, onStart, onCancel }) {
 // 🚀 MAIN APP COMPONENT
 // ==========================================
 function App() {
-  const [hasConsented, setHasConsented] = useState(() => localStorage.getItem("pureconvo_consented") === "true");
+  const [hasConsented, setHasConsented] = useState(() => localStorage.getItem("pureversation_consented") === "true");
   const [activeGame, setActiveGame] = useState("HOME"); 
   const [cloudStatus, setCloudStatus] = useState("⚪ CHECKING SYNC...");
   const [userKey, setUserKey] = useState(null);
@@ -199,17 +199,17 @@ function App() {
   const [isPulsing, setIsPulsing] = useState(false);
 
   useEffect(() => {
-    let sessionID = localStorage.getItem("pureconvo_session_id");
+    let sessionID = localStorage.getItem("pureversation_session_id");
     if (!sessionID) {
         sessionID = `user_${uuidv4().split('-')[0]}_${Date.now().toString().slice(-4)}`;
-        localStorage.setItem("pureconvo_session_id", sessionID);
+        localStorage.setItem("pureversation_session_id", sessionID);
     }
     setUserKey(sessionID); 
 
-    let opAddr = localStorage.getItem("pureconvo_operator_addr");
+    let opAddr = localStorage.getItem("pureversation_operator_addr");
     if (!opAddr) {
         opAddr = "0x" + uuidv4().replace(/-/g, "").slice(0, 40);
-        localStorage.setItem("pureconvo_operator_addr", opAddr);
+        localStorage.setItem("pureversation_operator_addr", opAddr);
     }
     setAddress(opAddr);
 
@@ -225,7 +225,7 @@ function App() {
       const syncInterval = setInterval(checkSync, 300000); 
       return () => clearInterval(syncInterval);
 
-    const greetList = localStorage.getItem("pureconvo_session_id") ? RETURNING_GREETINGS : NEW_GREETINGS;
+    const greetList = localStorage.getItem("pureversation_session_id") ? RETURNING_GREETINGS : NEW_GREETINGS;
     setGreeting(`${getRandom(greetList)} ${getRandom(PRIVACY_STATEMENTS)}`);
 
     const loadDialects = async () => {
@@ -252,7 +252,7 @@ function App() {
         
         {/* 🟢 FIX 1: Show consent screen before anything else loads */}
         {!hasConsented ? (
-            <ConsentScreen onConsent={() => { setHasConsented(true); localStorage.setItem("pureconvo_consented", "true"); }} />
+            <ConsentScreen onConsent={() => { setHasConsented(true); localStorage.setItem("pureversation_consented", "true"); }} />
         ) : (
             <>
                 <div className="hud-header">
