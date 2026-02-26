@@ -469,21 +469,8 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
 
     const startFirstRound = () => {
         if(!nickname) return;
-        
-        // Determine which dialect string to actually save
-        const finalDialect = userDialect === "+ Add New Dialect" ? customDialect : userDialect;
-        
-        if (userDialect === "+ Add New Dialect" && !customDialect.trim()) {
-            alert("Please type the name of your new dialect.");
-            return;
-        }
-
         localStorage.setItem("pure_nickname", nickname);
-        localStorage.setItem("speed_dialect", finalDialect); 
-        
-        // 🟢 THE FIX: Instantly lock the custom dialect into React's active memory!
-        setUserDialect(finalDialect);
-        
+        localStorage.setItem("speed_dialect", userDialect); // 🟢 Save dialect to memory
         fetchMission("General"); 
     };
 
@@ -517,7 +504,7 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
                         style={{ padding: '15px', fontSize: '16px', borderRadius: '8px', border: '2px solid #38bdf8', outline: 'none' }}
                     />
                     
-                    {/* The Dialect Dropdown */}
+                    {/* The New Dialect Dropdown */}
                     <select 
                         value={userDialect} 
                         onChange={e => setUserDialect(e.target.value)}
@@ -526,25 +513,7 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
                         {dialects.map(d => (
                             <option key={d} value={d}>{d}</option>
                         ))}
-                        {/* Fallback to ensure the option always exists */}
-                        {!dialects.includes("+ Add New Dialect") && (
-                            <option value="+ Add New Dialect">+ Add New Dialect</option>
-                        )}
                     </select>
-
-                    {/* 🟢 NEW: The magic pop-up input box! */}
-                    {userDialect === "+ Add New Dialect" && (
-                        <input 
-                            value={customDialect}
-                            onChange={e => setCustomDialect(e.target.value)}
-                            placeholder="Type dialect name (e.g., Krio)"
-                            style={{ 
-                                padding: '15px', fontSize: '16px', borderRadius: '8px', 
-                                border: '2px dashed #f472b6', outline: 'none',
-                                backgroundColor: 'rgba(0,0,0,0.5)', color: 'white'
-                            }}
-                        />
-                    )}
 
                     <button 
                         onClick={startFirstRound} 
