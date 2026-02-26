@@ -527,13 +527,25 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
     const [isRegenerating, setIsRegenerating] = useState(false); 
     const [dialect, setDialect] = useState(dialects[0] || "General");
     
-    // 🟢 FIX 2 & 3: Custom Dialect and Captcha States
+    // 🟢 MAKE SURE THESE 3 LINES ARE ALL HERE:
     const [customD, setCustomD] = useState("");
     const [captcha, setCaptcha] = useState("");
+    const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
 
     useEffect(() => {
         if (dialects.length > 0 && !dialects.includes(dialect)) { setDialect(dialects[0]); }
     }, [dialects]);
+
+    // Scramble the math every time they open the Add Dialect menu
+    useEffect(() => {
+        if (dialect === "+ Add New Dialect") {
+            setCaptchaMath({
+                a: Math.floor(Math.random() * 10) + 1,
+                b: Math.floor(Math.random() * 10) + 1
+            });
+            setCaptcha(""); 
+        }
+    }, [dialect]);
 
     const [lastProcessedBlob, setLastProcessedBlob] = useState(null);
     useEffect(() => {
@@ -582,10 +594,13 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
     };
 
     const handleSubmit = async () => {
-        // 🟢 FIX 2: Security check before submitting custom dialect
+        // 🟢 FIX 2: Dynamic Security Check
         if (dialect === "+ Add New Dialect") {
             if (!customD.trim()) { alert("Please type a new dialect name."); return; }
-            if (captcha !== "7") { alert("Bot Check Failed! 3 + 4 = 7."); return; }
+            if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
+                alert(`Bot Check Failed! ${captchaMath.a} + ${captchaMath.b} = ${captchaMath.a + captchaMath.b}.`); 
+                return; 
+            }
         }
 
         setStep("MINTING");
@@ -666,13 +681,13 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                             {dialects.map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
                         
-                        {/* 🟢 FIX 2 & 3: Textbox and Captcha for New Dialects */}
+                        {/* 🟢 FIX 2: Render Dynamic Captcha */}
                         {dialect === "+ Add New Dialect" && (
                             <div style={{marginTop: '10px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
                                 <input className="cyber-input" placeholder="Enter Dialect Name (e.g. Scottish Gaelic)" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
                                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-                                    <span style={{fontSize: '12px', color: '#94a3b8'}}>Human Check: 3 + 4 =</span>
-                                    <input className="cyber-input" style={{width: '60px', padding: '5px', textAlign: 'center'}} value={captcha} onChange={e => setCaptcha(e.target.value)} />
+                                    <span style={{fontSize: '12px', color: '#94a3b8'}}>Human Check: {captchaMath.a} + {captchaMath.b} =</span>
+                                    <input className="cyber-input" style={{width: '60px', padding: '5px', textAlign: 'center'}} type="number" value={captcha} onChange={e => setCaptcha(e.target.value)} />
                                 </div>
                             </div>
                         )}
@@ -736,15 +751,20 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
     const [isRegenerating, setIsRegenerating] = useState(false);
     const chatEndRef = useRef(null);
 
-    // 🟢 FIX 2 & 3: Listener Captcha States
+    // 🟢 FIX 2: Listener Dynamic Captcha States
     const [customD, setCustomD] = useState("");
     const [captcha, setCaptcha] = useState("");
-    
+    const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
+
     useEffect(() => {
-        if (dialects.length > 0 && !dialects.includes(setup.userDialect)) {
-            setSetup(prev => ({ ...prev, userDialect: dialects[0] }));
+        if (setup.userDialect === "+ Add New Dialect") {
+            setCaptchaMath({
+                a: Math.floor(Math.random() * 10) + 1,
+                b: Math.floor(Math.random() * 10) + 1
+            });
+            setCaptcha("");
         }
-    }, [dialects]);
+    }, [setup.userDialect]);
 
     useEffect(() => {
         if (phase === "chat" || phase === "verify") {
@@ -792,8 +812,17 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
         // 🟢 FIX 2: Security check for Listener Mode
         if (setup.userDialect === "+ Add New Dialect") {
             if (!customD.trim()) { alert("Please type a new dialect name."); return; }
-            if (captcha !== "7") { alert("Bot Check Failed! 3 + 4 = 7."); return; }
+            if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
+                alert(`Bot Check Failed! ${captchaMath.a} + ${captchaMath.b} = ${captchaMath.a + captchaMath.b}.`); 
+                return; 
+            }
             setSetup({...setup, userDialect: customD});
+            
+            // Instantly inject the new dialect into the app state
+            setDialects(prev => {
+                const clean = prev.filter(d => d !== "+ Add New Dialect");
+                return Array.from(new Set([customD, ...clean, "+ Add New Dialect"]));
+            });
         }
         const intro = "Hello, my name is Echo. What should I call you?"; 
         setMessages([{ sender: 'ai', text: intro }]); setPhase("onboarding"); speak(intro); 
@@ -900,13 +929,13 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
                     <div className="icon-large">🎛️</div><h3>CONFIGURE ECHO</h3>
                     <div className="setup-row"><label>YOUR DIALECT</label><select value={setup.userDialect} onChange={e => setSetup({...setup, userDialect: e.target.value})}>{dialects.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                     
-                    {/* 🟢 FIX 2 & 3: Custom Text Input & Captcha applied to Listener Mode */}
+                    {/* 🟢 FIX 2: Render Dynamic Captcha in Listener */}
                     {setup.userDialect === "+ Add New Dialect" && (
                         <div className="setup-row" style={{background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
                             <input className="cyber-input" placeholder="New Dialect Name" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
                             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-                                <span style={{fontSize: '11px', color: '#94a3b8'}}>Human Check: 3 + 4 =</span>
-                                <input className="cyber-input" style={{width: '50px', textAlign: 'center'}} value={captcha} onChange={e => setCaptcha(e.target.value)} />
+                                <span style={{fontSize: '11px', color: '#94a3b8'}}>Human Check: {captchaMath.a} + {captchaMath.b} =</span>
+                                <input className="cyber-input" style={{width: '50px', textAlign: 'center'}} type="number" value={captcha} onChange={e => setCaptcha(e.target.value)} />
                             </div>
                         </div>
                     )}
