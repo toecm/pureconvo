@@ -686,3 +686,37 @@ html, body, #root, .App {
         justify-content: flex-end; /* Pushes the record buttons to the bottom within thumb reach */
     }
 }
+
+/* ==========================================
+   🟢 NEW CSS FIXES (Consent, Captcha, Headers)
+   ========================================== */
+
+.back-icon {
+    transition: color 0.2s ease;
+}
+
+.back-icon:hover {
+    color: #f1f5f9 !important;
+}
+
+/* Ensure custom dialect inputs inherit the right theme */
+.cyber-input {
+    background: #1e293b;
+    border: 1px solid #475569;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.cyber-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+/* Fixes the setup screen spacing for Consent layout */
+.setup-screen h2 {
+    margin: 10px 0 20px 0;
+}
