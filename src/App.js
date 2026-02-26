@@ -91,7 +91,7 @@ const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 function ConsentScreen({ onConsent }) {
     return (
         <div className="setup-screen" style={{ textAlign: 'center', padding: '15px', overflowY: 'auto' }}>
-            <div className="icon-large" style={{ fontSize: '50px', marginTop: '80px' }}>⚖️</div>
+            <div className="icon-large" style={{ fontSize: '50px', marginTop: '120px' }}>⚖️</div>
             <h2 style={{ color: '#38bdf8', letterSpacing: '1px', fontSize: '20px' }}>ETHICAL AI CONSENT</h2>
             
             <div style={{ 
