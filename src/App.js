@@ -255,7 +255,6 @@ function FeedbackModal({ onClose }) {
 function App() {
   const [hasConsented, setHasConsented] = useState(() => localStorage.getItem("pureversation_consented") === "true");
   
-  // 🟢 FIX: Moved showFeedback inside the App component
   const [showFeedback, setShowFeedback] = useState(false);
   
   const [activeGame, setActiveGame] = useState("HOME"); 
@@ -280,7 +279,6 @@ function App() {
   const [greeting, setGreeting] = useState(""); 
   const [isPulsing, setIsPulsing] = useState(false);
 
-  // 🟢 FIX: Add Event Listener to catch custom open-feedback triggers from the games
   useEffect(() => {
       const openFb = () => setShowFeedback(true);
       window.addEventListener('open-feedback', openFb);
@@ -290,7 +288,7 @@ function App() {
   useEffect(() => {
     let sessionID = localStorage.getItem("pureversation_session_id");
     if (!sessionID) {
-        sessionID = `user_${uuidv4().split('-')[0]}_${Date.now().toString().slice(-4)}`;
+        sessionID = `session_${uuidv4().split('-')[0]}_${Date.now().toString().slice(-4)}`;
         localStorage.setItem("pureversation_session_id", sessionID);
     }
     setUserKey(sessionID); 
@@ -330,7 +328,7 @@ function App() {
   }, []);
 
   const handleIDClick = () => {
-      navigator.clipboard.writeText(userKey);
+      navigator.clipboard.writeText(address);
       setIsPulsing(true);
       setTimeout(() => setIsPulsing(false), 600);
   };
@@ -339,7 +337,6 @@ function App() {
     <div className="App">
       <div className="cyber-container">
         
-        {/* 🟢 FIX: Render FeedbackModal here when toggled */}
         {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
         
         {!hasConsented ? (
@@ -387,11 +384,12 @@ function App() {
                 )}
 
                 <div 
-                    className={`id-footer ${isPulsing ? 'pulse-active' : ''}`} onClick={handleIDClick} title="Tap to Copy Session ID"
+                    className={`id-footer ${isPulsing ? 'pulse-active' : ''}`} onClick={handleIDClick} title="Tap to Copy Operator ID"
                     style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', marginTop: '10px', transition: 'all 0.3s ease' }}
                 >
-                    <div style={{fontWeight: 'bold', color: '#94a3b8'}}>OPERATOR: {address.slice(0,6)}...{address.slice(-4)}</div>
-                    <div style={{fontSize: '10px', opacity: 0.6, letterSpacing: '1px', fontFamily: 'monospace'}}>SESSION ID: {userKey || "GENERATING..."}</div>
+                    <div style={{fontWeight: 'bold', color: '#38bdf8'}}>OPERATOR: {address.slice(0,6)}...{address.slice(-4)}</div>
+                    <div style={{fontSize: '9px', opacity: 0.8, color: '#facc15', letterSpacing: '1px', marginTop: '-2px'}}>(Tap to Copy)</div>
+                    <div style={{fontSize: '10px', opacity: 0.6, letterSpacing: '1px', fontFamily: 'monospace', marginTop: '2px'}}>{userKey || "GENERATING..."}</div>
                 </div>
             </>
         )}
