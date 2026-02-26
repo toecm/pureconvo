@@ -265,28 +265,28 @@ function App() {
                 
                 {activeGame === "ARCHIVIST" && (
                     <GameArchivist 
-                        userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
                         onBack={() => setActiveGame("HOME")} greeting={greeting} 
                     />
                 )}
 
                 {activeGame === "SPEED" && (
                     <GameSpeedChat 
-                        userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
                         onBack={() => setActiveGame("HOME")} greeting={greeting} 
                     />
                 )}
 
                 {activeGame === "VISION" && (
                     <GameVisionQuest 
-                        userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
                         onBack={() => setActiveGame("HOME")} greeting={greeting} 
                     />
                 )}
 
                 {activeGame === "LISTENER" && (
                     <GameActiveListener 
-                        userKey={userKey} setXP={setXP} dialects={dialects} operator={address}
+                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
                         onBack={() => setActiveGame("HOME")} 
                     />
                 )}
@@ -336,7 +336,7 @@ function HomeMenu({ onSelect, greeting }) {
 // ==========================================
 // 📜 GAME 1: THE ARCHIVIST 
 // ==========================================
-function GameArchivist({ userKey, setXP, dialects, onBack, greeting, operator }) {
+function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
     const [mission, setMission] = useState({ text: greeting, subtext: "Retrieving Archive Topic...", image: getDoodleUrl("abstract") });
     // 🟢 FIX 7: Extracted clearBlobUrl to pass down for proper retries
     const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
@@ -365,7 +365,7 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting, operator })
     return (
         <SharedGameLayout
             title="ARCHIVE ENTRY" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} userKey={userKey} setXP={setXP} 
+            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} setXP={setXP} 
             // 🟢 FIX 5: Added onReset so they can skip/refresh topics
             onBack={onBack} onReset={() => { if(window.confirm("Skip this topic?")) loadNextTopic(); }}
             onNext={loadNextTopic} sourceTag={`Game: Archivist | Op: ${operator}`} operator={operator}
@@ -376,7 +376,7 @@ function GameArchivist({ userKey, setXP, dialects, onBack, greeting, operator })
 // ==========================================
 // ⚡ GAME 2: SPEED CHAT 
 // ==========================================
-function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator }) {
+function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
     const [gameStage, setGameStage] = useState(() => localStorage.getItem(`speed_stage_${userKey}`) || "onboarding"); 
     const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
     const [loading, setLoading] = useState(false);
@@ -483,7 +483,7 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
     return (
         <SharedGameLayout
             title={`CHAT: ${nickname.toUpperCase()}`} mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} userKey={userKey} operator={operator} setXP={setXP} 
+            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} operator={operator} setXP={setXP} 
             onBack={onBack} timer={timeLeft} onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat`}
         />
     );
@@ -492,7 +492,7 @@ function GameSpeedChat({ userKey, setXP, dialects, onBack, greeting, operator })
 // ==========================================
 // 👁️ GAME 3: VISION QUEST 
 // ==========================================
-function GameVisionQuest({ userKey, setXP, dialects, onBack, greeting, operator }) {
+function GameVisionQuest({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
     const [mission, setMission] = useState({ text: greeting, subtext: "Calibrating Optical Sensors...", image: getPhotoUrl("cyberpunk") });
     // 🟢 FIX 7: Extracted clearBlobUrl
     const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
@@ -508,7 +508,7 @@ function GameVisionQuest({ userKey, setXP, dialects, onBack, greeting, operator 
     return (
         <SharedGameLayout
             title="OBSERVATION DECK" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} userKey={userKey} setXP={setXP} onBack={onBack}
+            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} setXP={setXP} onBack={onBack}
             onNext={loadNewImage} mode="vision" sourceTag={`Game: Vision | Op: ${operator}`} operator={operator}
         />
     );
@@ -517,7 +517,7 @@ function GameVisionQuest({ userKey, setXP, dialects, onBack, greeting, operator 
 // ==========================================
 // ⚙️ SHARED GAME LAYOUT 
 // ==========================================
-function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, clearBlobUrl, dialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset }) {
+function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, clearBlobUrl, dialects, setDialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset }) {
     const [step, setStep] = useState("RECORD"); 
     const [transcribed, setTranscribed] = useState("");
     const [clarification, setClarification] = useState("");
@@ -606,6 +606,14 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                 sourceTag || "Unknown Game", "User/AI Hybrid", finalOperatorId, wrappedAudio, false
             ]);
             setXP(p => p + 50);
+	    // 🟢 FIX: Instantly add the custom dialect to the local UI state
+            if (customD && dialect === "+ Add New Dialect") {
+                setDialects(prev => {
+                    const clean = prev.filter(d => d !== "+ Add New Dialect");
+                    return Array.from(new Set([customD, ...clean, "+ Add New Dialect"]));
+                });
+                setDialect(customD);
+            }
             setStep("💎 Contribution Saved!"); 
             setTranscribed(""); setClarification(""); setCaptcha("");
             
@@ -711,7 +719,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
 // ==========================================
 // 👂 GAME 4: THE LISTENER (Omitted unchanging logic for brevity, but includes Captcha fix)
 // ==========================================
-function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
+function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, operator }) {
     const loadSavedData = () => { const saved = localStorage.getItem("echo_memory_" + userKey); return saved ? JSON.parse(saved) : null; };
     const memory = loadSavedData();
     const [setup, setSetup] = useState(memory ? memory.setup : { voiceIndex: 0, pitch: 1.0, rate: 1.0, userDialect: dialects[0] || "General" });
@@ -877,7 +885,7 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
         } catch (e) { setMessages(p => [...p, { sender: 'ai', text: "I couldn't hear you. Try again?" }]); setPhase("chat"); }
     };
 
-    const { status, startRecording, stopRecording } = useReactMediaRecorder({ audio: true, onStop: handleAudioStop });
+    const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ audio: true, onStop: handleAudioStop });
 
     return (
         <div className="game-layout listener-mode">
@@ -938,6 +946,12 @@ function GameActiveListener({ userKey, setXP, dialects, onBack, operator }) {
                         )}
                         {phase === "verify" && (
                             <div className="verify-card">
+                                {/* 🟢 FIX: Added the audio player to The Listener verify phase */}
+                                <div className="audio-preview" style={{marginBottom: '15px', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '12px', border: '1px solid #334155'}}>
+                                    <label style={{fontSize:'10px', color:'#94a3b8', display:'block', marginBottom:'5px', letterSpacing: '1px'}}>REVIEW YOUR AUDIO:</label>
+                                    <audio src={mediaBlobUrl} controls style={{width: '100%', height: '35px', borderRadius: '8px', outline: 'none'}} />
+                                </div>
+
                                 <div className="verify-row">
                                     <label>I HEARD (TYPE TO EDIT):</label>
                                     <input className="cyber-input" value={currentTranscript} onChange={e => {setCurrentTranscript(e.target.value); setIsEdited(true);}} style={{border: isEdited ? '1px solid #22c55e' : '1px solid #475569'}}/>
