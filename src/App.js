@@ -488,17 +488,16 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
     const stopRecordingRef = useRef(stopRecording); 
 
     useEffect(() => {
-        stopRecordingRef.current = stopRecording;
-    }, [stopRecording]);
-
-    useEffect(() => {
         if (status === "recording") {
             setTimeLeft(10);
             timerRef.current = setInterval(() => {
                 setTimeLeft(prevTime => {
                     if (prevTime <= 1) { 
                         clearInterval(timerRef.current); 
-                        stopRecordingRef.current(); 
+                        // 🟢 FIX: 500ms invisible buffer to prevent audio clipping
+                        setTimeout(() => {
+                            stopRecordingRef.current(); 
+                        }, 500);
                         return 0; 
                     }
                     return prevTime - 1;
@@ -562,7 +561,25 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
                     <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>🔄 MISSION COMPLETE</h3>
                     <p style={{ fontSize: '12px', color: '#facc15', fontWeight: 'bold', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>Select the next topic to discuss:</p>
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '20px'}}>
-                        {TOPIC_SUGGESTIONS.slice(0, 6).map(t => (<button key={t} className="cyber-button" style={{background: 'rgba(255,255,255,0.1)', fontSize:'12px'}} onClick={() => fetchMission(t)}>{t}</button>))}
+                        {/* 🟢 FIX: Shuffles array AND applies forced dark background with pink borders */}
+                        {[...TOPIC_SUGGESTIONS].sort(() => 0.5 - Math.random()).slice(0, 6).map(t => (
+                            <button 
+                                key={t} 
+                                className="cyber-button" 
+                                style={{
+                                    background: 'rgba(15, 23, 42, 0.9)', 
+                                    border: '1px solid #f472b6', 
+                                    color: '#ffffff', 
+                                    fontWeight: 'bold',
+                                    textShadow: '1px 1px 2px #000',
+                                    fontSize: '12px',
+                                    padding: '12px'
+                                }} 
+                                onClick={() => fetchMission(t)}
+                            >
+                                {t}
+                            </button>
+                        ))}
                     </div>
                     <button onClick={handleReset} style={{marginTop:'20px', background:'transparent', border:'1px solid #ef4444', color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', width:'100%'}}>🚫 RESET IDENTITY</button>
                 </div>
@@ -789,7 +806,8 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                     <div style={{ textAlign: 'center', marginTop: '10px' }}>
                         {timer !== undefined && recStatus === "recording" && (
                             <div style={{ fontSize: '28px', fontWeight: 'bold', color: timer <= 3 ? '#ef4444' : '#38bdf8', marginBottom: '15px', textShadow: '0 0 10px rgba(56, 189, 248, 0.5)'}}>
-                                ⏱️ 00:{timer < 10 ? `0${timer}` : timer}
+                                {/* 🟢 FIX: Displays TIME'S UP when the clock hits zero */}
+                                {timer === 0 ? "🛑 TIME'S UP!" : `⏱️ 00:${timer < 10 ? `0${timer}` : timer}`}
                             </div>
                         )}
                         <button 
