@@ -574,7 +574,7 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
         <SharedGameLayout
             title={`CHAT: ${nickname.toUpperCase()}`} mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
             mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} operator={operator} setXP={setXP} 
-            onBack={onBack} timer={timeLeft} onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat`}
+            onBack={onBack} timer={timeLeft} onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat | Op: ${operator}`}
         />
     );
 }
@@ -952,7 +952,7 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
 
             await app.predict("/check_and_submit_logic", [
                 currentTranscript, d, "", currentClarification, "Conversational", "Chat", "Interactive Chat Session",
-                "Game: Listener", clarSource, finalOperatorId, wrappedAudio, false
+                `Game: Listener | Op: ${operator}`, clarSource, finalOperatorId, wrappedAudio, false
             ]);
             
             const prompt = `User said: "${currentTranscript}". Meaning: "${currentClarification}". You are Echo. Reply naturally with a short follow-up question.`;
