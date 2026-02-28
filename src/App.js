@@ -545,7 +545,8 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
             <div className="game-layout">
                 <div className="mission-card" style={{display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', textAlign:'center', height: 'auto', padding: '20px'}}>
                     <div className="icon-large">🕵️‍♂️</div>
-                    <h3>WHAT'S YOUR NICKNAME?</h3>
+                    {/* 🟢 FIX: Added heavy outline to the nickname header */}
+                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>WHAT'S YOUR NICKNAME?</h3>
                     <input className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. Maverick" style={{margin:'20px 0', textAlign:'center'}}/>
                     <div className="action-row"><button className="cancel-btn" onClick={onBack}>BACK</button><button className="cyber-button" onClick={startFirstRound} disabled={!nickname}>START MISSION</button></div>
                 </div>
@@ -557,8 +558,9 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
         return (
             <div className="game-layout">
                 <div className="mission-card" style={{ height: 'auto', padding: '20px', display: 'block' }}>
-                    <h3>🔄 MISSION COMPLETE</h3>
-                    <p style={{ fontSize: '12px' }}>Select the next topic to discuss:</p>
+                    {/* 🟢 FIX: Added heavy outlines to both the header and the subtext */}
+                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>🔄 MISSION COMPLETE</h3>
+                    <p style={{ fontSize: '12px', color: '#facc15', fontWeight: 'bold', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>Select the next topic to discuss:</p>
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '20px'}}>
                         {TOPIC_SUGGESTIONS.slice(0, 6).map(t => (<button key={t} className="cyber-button" style={{background: 'rgba(255,255,255,0.1)', fontSize:'12px'}} onClick={() => fetchMission(t)}>{t}</button>))}
                     </div>
@@ -744,13 +746,21 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
             {mode === "vision" ? (
                 <div className="vision-mode-container">
                     <div className="vision-image" style={{backgroundImage: `url(${mission.image})`}} />
-                    <div className="vision-text-block">{mission.subtext && <p className="subtext">{mission.subtext}</p>}<p className="main-text">{mission.text}</p></div>
+                    {/* 🟢 FIX: Added heavy text-shadow for readability on random images */}
+                    <div className="vision-text-block" style={{ textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>
+                        {mission.subtext && <p className="subtext" style={{ color: '#facc15' }}>{mission.subtext}</p>}
+                        <p className="main-text" style={{ color: '#ffffff', fontWeight: 'bold' }}>{mission.text}</p>
+                    </div>
                 </div>
             ) : (
                 <div className="mission-card">
                     <div className="doodle-bg" style={{backgroundImage: `url(${mission.image})`}} />
-                    <div className="mission-content-overlay">
-                        <div>{mission.subtext && <p style={{fontSize:'0.8em', opacity:0.7, marginBottom:'5px'}}>{mission.subtext}</p>}<p>{mission.text}</p></div>
+                    {/* 🟢 FIX: Added heavy text-shadow and forced bright colors for Speed Chat & Archivist */}
+                    <div className="mission-content-overlay" style={{ textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>
+                        <div>
+                            {mission.subtext && <p style={{fontSize:'0.8em', opacity: 0.9, marginBottom:'5px', color: '#38bdf8'}}>{mission.subtext}</p>}
+                            <p style={{color: '#ffffff', fontWeight: 'bold', fontSize: '1.1em'}}>{mission.text}</p>
+                        </div>
                     </div>
                 </div>
             )}
