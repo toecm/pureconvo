@@ -461,7 +461,7 @@ function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting
             title="ARCHIVE ENTRY" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
             mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} setXP={setXP} 
             onBack={onBack} onReset={() => { if(window.confirm("Skip this topic?")) loadNextTopic(); }}
-            onNext={loadNextTopic} sourceTag={`Game: Archivist | Op: ${operator}`} operator={operator}
+            onNext={loadNextTopic} sourceTag="Game: Archivist" operator={operator}
         />
     );
 }
@@ -472,13 +472,15 @@ function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting
 function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
     const [gameStage, setGameStage] = useState(() => localStorage.getItem(`speed_stage_${userKey}`) || "onboarding"); 
     const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
+    const [currentTopic, setCurrentTopic] = useState(""); // 🟢 NEW: Tracks what they are currently talking about
+    const [customTopicInput, setCustomTopicInput] = useState(""); // 🟢 NEW: Tracks what they type
     const [loading, setLoading] = useState(false);
     const clientRef = useRef(null);
 
     const [mission, setMission] = useState(() => {
         const savedMission = localStorage.getItem(`speed_mission_${userKey}`);
         if (savedMission) { try { return JSON.parse(savedMission); } catch (e) {} }
-        return { text: greeting, subtext: "I'll be with you shortly...", image: getDoodleUrl("network") };
+        return { text: greeting, subtext: "I'm thinking of what to ask you...", image: getDoodleUrl("network") };
     });
 
     const [timeLeft, setTimeLeft] = useState(10);
@@ -511,26 +513,94 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
     }, [status]);
 
     const fetchMission = async (topic) => {
-        setLoading(true);
-        setMission(prev => ({ ...prev, subtext: `Establishing Neural Link for: ${topic}...` }));
-        try {
-            if (!clientRef.current) throw new Error("Client not ready");
-            const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 4500));
-            const apiPromise = clientRef.current.predict("/generate_mission", [`Topic: ${topic}. Nickname: ${nickname}. Ask a short question.`]);
+        setLoading(true);
+        setMission(prev => ({ ...prev, subtext: `Establishing Neural Link for: ${topic}...` }));
+        try {
+            // 🟢 FIX: Directly connect to the cloud space to ensure it never fails on the first load
+            const app = await Client.connect(SPACE_URL);
+            
+            // 🟢 FIX 1: Increased timeout from 4.5s to 8s to allow the LLM time to generate
+            const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
+            
+            // 🟢 FIX 2: Clearer prompt instructions for the AI
+            const prompt = `Topic: ${topic}. Ask a short, engaging 1-sentence question about this topic for a player named ${nickname}.`;
+            const apiPromise = app.predict("/generate_mission", [prompt]);
+            
             const res = await Promise.race([apiPromise, timeoutPromise]);
+            
             let data;
             try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
-            setMission({ text: data.text, subtext: `Target: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
+            
+            // Clean up any stray quotation marks the AI might add
+            let cleanText = typeof data.text === 'string' ? data.text.replace(/^["']|["']$/g, '') : data.text;
+            
+            setMission({ text: cleanText, subtext: `Target: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
             setGameStage("mission");
         } catch (e) { 
-            const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
-            setMission({ text: randomStarter, subtext: `Local Backup: ${topic}`, image: getDoodleUrl(topic) }); 
+            // 🟢 FIX 3: Smart contextual fallback that actually makes sense!
+            let fallbackText = "";
+            
+            if (topic === "General") {
+                // If the topic is General, grab a random human-sounding question
+                const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
+                fallbackText = `Hey ${nickname}, here's a random one: ${randomStarter}`;
+            } else {
+                // If it's a specific topic, use it in the sentence
+                fallbackText = `Hey ${nickname}, What do you like about ${topic.toLowerCase()} the most?`;
+            }
+            
+            setMission({ text: fallbackText, subtext: `Local Backup: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) }); 
             setGameStage("mission");
         } finally { setLoading(false); }
     };
 
-    const startFirstRound = () => { if(nickname) { localStorage.setItem("pure_nickname", nickname); fetchMission("General"); } };
-    const handleNextRound = () => setGameStage("topic_select");
+    // 🟢 FIX: Start round with their custom topic, or default to "General"
+    const startFirstRound = () => { 
+        if(nickname) { 
+            localStorage.setItem("pure_nickname", nickname); 
+            const startingTopic = customTopicInput.trim() || "General";
+            setCurrentTopic(startingTopic);
+            setCustomTopicInput(""); // Clear the input
+            fetchMission(startingTopic); 
+        } 
+    };
+
+    // 🟢 FIX: Reusable handler for clicking OR typing a topic
+    const handleTopicSelection = (topic) => {
+        const selected = topic.trim() || "General";
+        setCurrentTopic(selected);
+        setCustomTopicInput(""); // Clear the input
+        fetchMission(selected);
+    };
+
+    // 🟢 NEW: Instead of going to the menu, we generate a contextual follow-up question
+    const handleNextRound = (userUtterance, userClarification) => {
+        const lastAnswer = userClarification || userUtterance || "something interesting";
+        fetchFollowUp(currentTopic, lastAnswer);
+    };
+
+    const fetchFollowUp = async (topic, lastAnswer) => {
+        setLoading(true);
+        setMission(prev => ({ ...prev, subtext: `Analyzing response...` }));
+        try {
+            const app = await Client.connect(SPACE_URL); // 🟢 FIX: Directly connect so the AI doesn't fail!
+            const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
+            
+            // 🟢 NEW: Tell Gemini exactly what the user just said so it can dig deeper
+            const prompt = `Topic: ${topic}. Player Name: ${nickname}. The player just answered a question by saying: "${lastAnswer}". Ask a short, engaging 1-sentence follow-up question asking WHY or asking for more details.`;
+            
+            const apiPromise = app.predict("/generate_mission", [prompt]);
+            const res = await Promise.race([apiPromise, timeoutPromise]);
+            
+            let data;
+            try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
+            let cleanText = typeof data.text === 'string' ? data.text.replace(/^["']|["']$/g, '') : data.text;
+            
+            setMission({ text: cleanText, subtext: `Follow-up: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
+        } catch (e) {
+            setMission({ text: `That's interesting, ${nickname}! Tell me more about why you feel that way.`, subtext: `Local Backup: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
+        } finally { setLoading(false); }
+    };
     
     const handleReset = () => {
         if (window.confirm("Reset Speed Chat identity?")) {
@@ -544,9 +614,13 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
             <div className="game-layout">
                 <div className="mission-card" style={{display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', textAlign:'center', height: 'auto', padding: '20px'}}>
                     <div className="icon-large">🕵️‍♂️</div>
-                    {/* 🟢 FIX: Added heavy outline to the nickname header */}
-                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>WHAT'S YOUR NICKNAME?</h3>
-                    <input className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. Maverick" style={{margin:'20px 0', textAlign:'center'}}/>
+                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', fontSize: '18px' }}>WHAT'S YOUR NICKNAME?</h3>
+                    <input className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. Maverick" style={{margin:'10px 0 20px', textAlign:'center'}}/>
+                    
+                    {/* 🟢 NEW: Ask for the initial topic */}
+                    <h3 style={{ color: '#38bdf8', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', fontSize: '14px' }}>WHAT DO YOU WANT TO TALK ABOUT?</h3>
+                    <input className="cyber-input" value={customTopicInput} onChange={e => setCustomTopicInput(e.target.value)} placeholder="e.g. Tech, Food, Anime (Optional)" style={{margin:'10px 0 20px', textAlign:'center'}}/>
+
                     <div className="action-row"><button className="cancel-btn" onClick={onBack}>BACK</button><button className="cyber-button" onClick={startFirstRound} disabled={!nickname}>START MISSION</button></div>
                 </div>
             </div>
@@ -557,12 +631,28 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
         return (
             <div className="game-layout">
                 <div className="mission-card" style={{ height: 'auto', padding: '20px', display: 'block' }}>
-                    {/* 🟢 FIX: Added heavy outlines to both the header and the subtext */}
-                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>🔄 MISSION COMPLETE</h3>
-                    <p style={{ fontSize: '12px', color: '#facc15', fontWeight: 'bold', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>Select the next topic to discuss:</p>
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '20px'}}>
-                        {/* 🟢 FIX: Shuffles array AND applies forced dark background with pink borders */}
-                        {[...TOPIC_SUGGESTIONS].sort(() => 0.5 - Math.random()).slice(0, 6).map(t => (
+                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', marginBottom: '15px' }}>🔄 MISSION COMPLETE</h3>
+                    
+                    {/* 🟢 NEW: Option to continue the current conversation branch */}
+                    {currentTopic && (
+                        <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #facc15' }}>
+                            <p style={{ fontSize: '13px', color: '#facc15', fontWeight: 'bold', margin: '0 0 10px 0', textShadow: '1px 1px 2px #000' }}>Keep talking about "{currentTopic}"?</p>
+                            <button className="cyber-button" style={{ background: '#facc15', color: '#000', width: '100%', padding: '10px' }} onClick={() => handleTopicSelection(currentTopic)}>
+                                💬 CONTINUE TOPIC
+                            </button>
+                        </div>
+                    )}
+
+                    <p style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px' }}>Or switch to a new topic:</p>
+
+                    {/* 🟢 NEW: Input to type a completely custom topic */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+                         <input className="cyber-input" value={customTopicInput} onChange={e => setCustomTopicInput(e.target.value)} placeholder="Type custom topic..." style={{ flex: 1, margin: 0 }}/>
+                         <button className="cyber-button" onClick={() => handleTopicSelection(customTopicInput)} disabled={!customTopicInput.trim()} style={{ padding: '0 20px', background: '#38bdf8', color: '#000', margin: 0 }}>GO</button>
+                    </div>
+
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
+                        {[...TOPIC_SUGGESTIONS].sort(() => 0.5 - Math.random()).slice(0, 4).map(t => (
                             <button 
                                 key={t} 
                                 className="cyber-button" 
@@ -575,13 +665,13 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
                                     fontSize: '12px',
                                     padding: '12px'
                                 }} 
-                                onClick={() => fetchMission(t)}
+                                onClick={() => handleTopicSelection(t)}
                             >
                                 {t}
                             </button>
                         ))}
                     </div>
-                    <button onClick={handleReset} style={{marginTop:'20px', background:'transparent', border:'1px solid #ef4444', color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', width:'100%'}}>🚫 RESET IDENTITY</button>
+                    <button onClick={handleReset} style={{marginTop:'20px', background:'transparent', border:'1px dotted #ef4444', color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', width:'100%'}}>🚫 RESET IDENTITY</button>
                 </div>
             </div>
         );
@@ -593,7 +683,7 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
         <SharedGameLayout
             title={`CHAT: ${nickname.toUpperCase()}`} mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
             mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} operator={operator} setXP={setXP} 
-            onBack={onBack} timer={timeLeft} onNext={handleNextRound} onReset={handleReset} sourceTag={`Game: SpeedChat | Op: ${operator}`}
+            onBack={onBack} timer={timeLeft} onNext={handleNextRound} onReset={handleReset} onChangeTopic={() => setGameStage("topic_select")} sourceTag="Game: SpeedChat"
         />
     );
 }
@@ -617,7 +707,7 @@ function GameVisionQuest({ userKey, setXP, dialects, setDialects, onBack, greeti
         <SharedGameLayout
             title="OBSERVATION DECK" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
             mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} setXP={setXP} onBack={onBack}
-            onNext={loadNewImage} mode="vision" sourceTag={`Game: Vision | Op: ${operator}`} operator={operator}
+            onNext={loadNewImage} mode="vision" sourceTag="Game: Vision" operator={operator}
         />
     );
 }
@@ -625,7 +715,8 @@ function GameVisionQuest({ userKey, setXP, dialects, setDialects, onBack, greeti
 // ==========================================
 // ⚙️ SHARED GAME LAYOUT 
 // ==========================================
-function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, clearBlobUrl, dialects, setDialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset }) {
+// 🟢 Added onChangeTopic to the props
+function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, clearBlobUrl, dialects, setDialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset, onChangeTopic }) {
     const [step, setStep] = useState("RECORD"); 
     const [transcribed, setTranscribed] = useState("");
     const [clarification, setClarification] = useState("");
@@ -741,7 +832,8 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                     if(clearBlobUrl) clearBlobUrl();
                     setLastProcessedBlob(null);
                     setStep("RECORD"); 
-                    onNext(); 
+                    // 🟢 FIX: Pass the user's transcript & clarification UP to the game engine
+                    onNext(transcribed, clarification); 
                 } else { onBack(); }
             }, 1500);
 
@@ -757,7 +849,11 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                         <h3 style={{margin: 0, color: '#f8fafc'}}>{title}</h3>
                     </div>
                 </div>
-                {onReset && (<button onClick={onReset} style={{background:'rgba(0,0,0,0.3)', border:'none', borderRadius:'50%', width:'80px', height:'30px', cursor:'pointer', fontSize:'20px', color:'#94a3b8', marginLeft:'10px'}} title="Reset Game">🗑️🎮</button>)}
+                <div style={{display:'flex', gap:'5px'}}>
+                    {/* 🟢 NEW: The manual Change Topic button */}
+                    {onChangeTopic && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'11px', color:'#f472b6', fontWeight:'bold'}} title="Change Topic">🔄 TOPIC</button>)}
+                    {onReset && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'16px', color:'#f472b6', fontWeight:'bold'}} title="Reset Identity">🔄🎮</button>)}
+                </div>
             </div>
 
             {mode === "vision" ? (
@@ -980,7 +1076,7 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
 
             await app.predict("/check_and_submit_logic", [
                 currentTranscript, d, "", currentClarification, "Conversational", "Chat", "Interactive Chat Session",
-                `Game: Listener | Op: ${operator}`, clarSource, finalOperatorId, wrappedAudio, false
+                "Game: Listener", clarSource, finalOperatorId, wrappedAudio, false
             ]);
             
             const prompt = `User said: "${currentTranscript}". Meaning: "${currentClarification}". You are Echo. Reply naturally with a short follow-up question.`;
@@ -1034,7 +1130,7 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
                 <button className="back-icon" onClick={onBack}>🏠←</button>
                 <div className={`status-dot ${status === "recording" ? "pulsing-red" : ""}`}></div>
                 <h3>ECHO {nickname ? `| ${nickname.toUpperCase()}` : ""}</h3>
-                <button style={{marginLeft:'auto', background:'transparent', border:'none', fontSize:'16px', color:'#94a3b8', cursor:'pointer'}} onClick={handleReset}>🗑️🎮</button>
+                <button style={{marginLeft:'auto', background:'transparent', border:'none', fontSize:'16px', color:'#94a3b8', cursor:'pointer'}} onClick={handleReset}>🔄🎮</button>
             </div>
             {phase === "setup" ? (
                 <div className="setup-screen">
