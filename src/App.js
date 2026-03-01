@@ -320,12 +320,38 @@ function App() {
     const loadDialects = async () => {
         try {
             const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/api_get_dialects", []); 
+            // Call the Gradio API endpoint
+            const res = await app.predict("/api_get_dialects"); 
+            
             const rawData = res.data[0];
-            let parsedArray = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
-            if (parsedArray && parsedArray.length > 0) setDialects(parsedArray);
-        } catch (e) { setDialects(FALLBACK_DIALECTS); }
+            let parsedArray = [];
+            
+            // Handle stringified JSON, regular arrays, or object wrappers
+            if (typeof rawData === "string") {
+                parsedArray = JSON.parse(rawData);
+            } else if (Array.isArray(rawData)) {
+                parsedArray = rawData;
+            } else if (rawData && rawData.dialects) {
+                parsedArray = rawData.dialects;
+            }
+
+            if (parsedArray && Array.isArray(parsedArray) && parsedArray.length > 0) {
+                // 🟢 FIX: Ensure the array is clean and ALWAYS has "+ Add New Dialect" at the very bottom
+                const cleanArray = parsedArray.filter(d => d !== "+ Add New Dialect" && typeof d === 'string');
+                
+                // Optional: Sort alphabetically for better UX
+                cleanArray.sort((a, b) => a.localeCompare(b));
+                
+                setDialects([...new Set(cleanArray), "+ Add New Dialect"]);
+            } else {
+                throw new Error("Parsed data was empty or not an array");
+            }
+        } catch (e) { 
+            console.error("⚠️ Failed to sync database dialects, using fallbacks:", e);
+            setDialects(FALLBACK_DIALECTS); 
+        }
     };
+
     loadDialects();
   }, []);
 
