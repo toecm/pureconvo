@@ -76,6 +76,15 @@ const GAME_ASSETS = {
 // --- CONFIGURATION ---
 const SPACE_URL = "toecm/PureVersation"; 
 
+// 🟢 GLOBAL SINGLETON: Keeps one stable connection for all games
+let sharedClient = null;
+const getClient = async () => {
+    if (!sharedClient) {
+        sharedClient = await Client.connect(SPACE_URL);
+    }
+    return sharedClient;
+};
+
 const FALLBACK_DIALECTS = [
   "African American Vernacular English", "American English", "British English", "Gullah Creole", "Indian English", "Indonesian English", "Jamaican Patois", "Korean English", "Malaysian English", "Nigerian English", "Nigerian Pidgin English", "South African English",
   "+ Add New Dialect"
@@ -1205,7 +1214,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
         
         const checkMatch = async () => {
             try {
-                const app = await Client.connect(SPACE_URL);
+                const app = await getClient(); // Use shared client
                 const res = await app.predict("/check_match", [operator]);
                 const data = JSON.parse(res.data[0]);
                 
@@ -1214,10 +1223,10 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
                     setPartnerDialect(data.partner_dialect);
                     setPhase("chat");
                 }
-            } catch (e) { console.error("Match check error", e); }
+            } catch (e) { console.warn("Searching for partner..."); }
         };
 
-        const interval = setInterval(checkMatch, 2500); // Poll every 2.5s
+        const interval = setInterval(checkMatch, 3000);
         return () => clearInterval(interval);
     }, [phase, operator]);
 
@@ -1227,7 +1236,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
         
         const pollMessages = async () => {
             try {
-                const app = await Client.connect(SPACE_URL);
+                const app = await getClient(); // Use shared client
                 const currentLength = chatLogRef.current.length;
                 const res = await app.predict("/relay_poll", [roomCode, currentLength]);
                 const newMsgs = JSON.parse(res.data[0]);
@@ -1236,7 +1245,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
                     setChatLog(prev => [...prev, ...newMsgs]);
                     setTimeout(() => endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
                 }
-            } catch (e) {} 
+            } catch (e) { console.error("Poll failed", e); }
         };
 
         const interval = setInterval(pollMessages, 3000); 
