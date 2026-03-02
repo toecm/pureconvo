@@ -883,12 +883,13 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
             </div>
 
             {mode === "vision" ? (
-                <div className="vision-mode-container">
-                    <div className="vision-image" style={{backgroundImage: `url(${mission.image})`}} />
-                    {/* 🟢 FIX: Added heavy text-shadow for readability on random images */}
-                    <div className="vision-text-block" style={{ textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>
-                        {mission.subtext && <p className="subtext" style={{ color: '#facc15' }}>{mission.subtext}</p>}
-                        <p className="main-text" style={{ color: '#ffffff', fontWeight: 'bold' }}>{mission.text}</p>
+                <div className="vision-mode-container" style={{ position: 'relative', width: '100%', height: '250px', borderRadius: '12px', overflow: 'hidden', marginBottom: '15px', border: '1px solid #a78bfa' }}>
+                    <div className="vision-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: `url(${mission.image})`, backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 1 }} />
+                    
+                    {/* 🟢 FIX: Locked text to the bottom of the image with absolute positioning and a dark gradient for guaranteed visibility on Android */}
+                    <div className="vision-text-block" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', padding: '20px 10px 10px 10px', background: 'linear-gradient(to top, rgba(0,0,0,0.95), transparent)', textAlign: 'center', textShadow: '1px 1px 2px #000', zIndex: 2, boxSizing: 'border-box' }}>
+                        {mission.subtext && <p className="subtext" style={{ color: '#facc15', margin: '0 0 5px 0', fontSize: '11px', letterSpacing: '1px' }}>{mission.subtext}</p>}
+                        <p className="main-text" style={{ color: '#ffffff', fontWeight: 'bold', margin: 0, fontSize: '15px' }}>{mission.text}</p>
                     </div>
                 </div>
             ) : (
