@@ -49,6 +49,27 @@ const GAME_ASSETS = {
             "2. Describe: Explain what you see in detail.",
             "3. Mint: Teach the AI visual context."
         ]
+    },
+    BRIDGE: {
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20mobile.jpg", // You can update this image later
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20vid.mp4",
+        color: "#22c55e",
+        instructions: [
+            "1. Setup: Choose a dialect for Player 1 and Player 2.",
+            "2. Take Turns: Hold your respective button to speak.",
+            "3. Listen: The app will translate and speak to the other player."
+        ]
+    },
+    CONVO: {
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20mobile.jpg", 
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20vid.mp4",
+        color: "#f97316",
+        instructions: [
+            "1. Connect: Search for an anonymous partner online.",
+            "2. Record & Edit: Speak naturally in your dialect.",
+            "3. Contribute: Your verified chats are saved to the blockchain.",
+            "4. Smart Prompts: AI intervenes to translate heavy slang for your partner."
+        ]
     }
 };
 
@@ -382,6 +403,20 @@ function App() {
                 </div>
 
                 {activeGame === "HOME" && <HomeMenu onSelect={setActiveGame} greeting={greeting} />}
+
+		{activeGame === "CONVO" && (
+                    <GameHumanConvo 
+                        userKey={userKey} operator={address} dialects={dialects} 
+                        onBack={() => setActiveGame("HOME")} 
+                    />
+                )}
+
+		{activeGame === "BRIDGE" && (
+                    <GameConvoBridge 
+                        userKey={userKey} dialects={dialects} 
+                        onBack={() => setActiveGame("HOME")} 
+                    />
+                )}
                 
                 {activeGame === "ARCHIVIST" && (
                     <GameArchivist 
@@ -437,6 +472,9 @@ function HomeMenu({ onSelect, greeting }) {
             <div className="welcome-banner"><p>{greeting}</p></div>
             <div className="instruction-zone"><p>SELECT MISSION</p><div className="instruction-line"></div></div>
             <div className="menu-grid" style={{paddingBottom: '40px'}}>
+		<div className="menu-card" onClick={() => handleGameClick("BRIDGE")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.BRIDGE.image})`, backgroundSize: 'cover', border: '1px solid #22c55e'}}>
+                    <div className="icon-large">🌉</div><h3 style={{color: '#22c55e'}}>CONVO BRIDGE</h3><p>Live 2-Player Translation</p>
+                </div>
                 <div className="menu-card" onClick={() => handleGameClick("LISTENER")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.LISTENER.image})`, backgroundSize: 'cover'}}>
                     <div className="icon-large">👂</div><h3>THE LISTENER</h3><p>Active Conversation Mode</p>
                 </div>
@@ -449,6 +487,9 @@ function HomeMenu({ onSelect, greeting }) {
                 <div className="menu-card" onClick={() => handleGameClick("VISION")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.VISION.image})`, backgroundSize: 'cover'}}>
                     <div className="icon-large">👁️</div><h3>VISION QUEST</h3><p>Describe what you see</p>
                 </div>
+		<div className="menu-card" onClick={() => handleGameClick("CONVO")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.CONVO.image})`, backgroundSize: 'cover', border: '1px solid #f97316'}}>
+            <div className="icon-large">📡</div><h3 style={{color: '#f97316'}}>HUMAN CONVO</h3><p>Remote 2-Device Chat</p>
+        </div>
             </div>
         </div>
     );
@@ -739,237 +780,6 @@ function GameVisionQuest({ userKey, setXP, dialects, setDialects, onBack, greeti
 }
 
 // ==========================================
-// ⚙️ SHARED GAME LAYOUT 
-// ==========================================
-// 🟢 Added onChangeTopic to the props
-function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, clearBlobUrl, dialects, setDialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset, onChangeTopic }) {
-    const [step, setStep] = useState("RECORD"); 
-    const [transcribed, setTranscribed] = useState("");
-    const [clarification, setClarification] = useState("");
-    const [tone, setTone] = useState("Neutral / Conversational"); 
-    const [context, setContext] = useState("General");
-    const [pragmatics, setPragmatics] = useState("");
-    const [isRegenerating, setIsRegenerating] = useState(false); 
-    const [dialect, setDialect] = useState(dialects[0] || "General");
-    
-    const [customD, setCustomD] = useState("");
-    const [captcha, setCaptcha] = useState("");
-    const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
-
-    useEffect(() => {
-        if (dialects.length > 0 && !dialects.includes(dialect)) { setDialect(dialects[0]); }
-    }, [dialects]);
-
-    useEffect(() => {
-        if (dialect === "+ Add New Dialect") {
-            setCaptchaMath({
-                a: Math.floor(Math.random() * 10) + 1,
-                b: Math.floor(Math.random() * 10) + 1
-            });
-            setCaptcha(""); 
-        }
-    }, [dialect]);
-
-    const [lastProcessedBlob, setLastProcessedBlob] = useState(null);
-    useEffect(() => {
-        if (mediaBlob && mediaBlob !== lastProcessedBlob && step === "RECORD") {
-            setLastProcessedBlob(mediaBlob);
-            handleAnalyze();
-        }
-    }, [mediaBlob, step, lastProcessedBlob]);
-
-    const handleAnalyze = async () => {
-        if (!mediaBlob) return;
-        setStep("ANALYZING");
-        try {
-            const blob = await fetch(mediaBlob).then(r => r.blob());
-            const app = await Client.connect(SPACE_URL);
-            const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            const tRes = await app.predict("/transcribe_check", [blob, d]);
-            const text = tRes.data[0];
-            setTranscribed(text);
-            const cRes = await app.predict("/generate_clarifications", [text, d]);
-            parseClarification(cRes.data[0]);
-            setStep("REVIEW");
-        } catch (e) { 
-            setStep("REVIEW"); setTranscribed("Error analyzing audio."); 
-        }
-    };
-
-    const parseClarification = (rawData) => {
-        let data;
-        try { data = JSON.parse(rawData); } catch { data = { clarification: rawData }; }
-        setClarification(data.clarification || data.Meaning || rawData);
-        setContext(data.context || "General");
-        setPragmatics(data.pragmatics || "");
-    };
-
-    const handleRegenerate = async () => {
-        if (!transcribed.trim()) return;
-        setIsRegenerating(true);
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            const res = await app.predict("/generate_clarifications", [transcribed, d]);
-            parseClarification(res.data[0]);
-            setIsRegenerating(false);
-        } catch (e) { setClarification("Failed to regenerate."); setIsRegenerating(false); }
-    };
-
-    const handleSubmit = async () => {
-        if (dialect === "+ Add New Dialect") {
-            if (!customD.trim()) { alert("Please type a new dialect name."); return; }
-            if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
-                alert(`Bot Check Failed! ${captchaMath.a} + ${captchaMath.b} = ${captchaMath.a + captchaMath.b}.`); 
-                return; 
-            }
-        }
-
-        setStep("MINTING");
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            let wrappedAudio = null;
-            if (mediaBlob) {
-                try {
-                    const blob = await fetch(mediaBlob).then(r => r.blob());
-                    const audioFile = new File([blob], `capture_${Date.now()}.wav`, { type: "audio/wav" });
-                    wrappedAudio = handle_file(audioFile);
-                } catch (e) {}
-            }
-            const finalOperatorId = operator || "0xUnknown";
-            await app.predict("/check_and_submit_logic", [
-                transcribed, d, customD, clarification, tone, context, pragmatics,
-                sourceTag || "Unknown Game", "User/AI Hybrid", finalOperatorId, wrappedAudio, false
-            ]);
-            setXP(p => p + 50);
-            if (customD && dialect === "+ Add New Dialect") {
-                setDialects(prev => {
-                    const clean = prev.filter(d => d !== "+ Add New Dialect");
-                    return Array.from(new Set([customD, ...clean, "+ Add New Dialect"]));
-                });
-                setDialect(customD);
-            }
-            setStep("💎 Contribution Saved!"); 
-            setTranscribed(""); setClarification(""); setCaptcha("");
-            
-            setTimeout(() => {
-                if (onNext) { 
-                    if(clearBlobUrl) clearBlobUrl();
-                    setLastProcessedBlob(null);
-                    setStep("RECORD"); 
-                    // 🟢 FIX: Pass the user's transcript & clarification UP to the game engine
-                    onNext(transcribed, clarification); 
-                } else { onBack(); }
-            }, 1500);
-
-        } catch (e) { setStep("RECORD"); }
-    };
-
-    return (
-        <div className="game-layout">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: '10px'}}>
-                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                    {onBack && <button className="back-icon" onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px', padding:'0'}} title="Back to Menu">🏠←</button>}
-                    <div>
-                        <h3 style={{margin: 0, color: '#f8fafc'}}>{title}</h3>
-                    </div>
-                </div>
-                <div style={{display:'flex', gap:'5px', alignItems: 'center'}}>
-                    {/* 🟢 NEW: The manual Change Topic button */}
-                    {onChangeTopic && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'11px', color:'#f472b6', fontWeight:'bold'}} title="Change Topic">🔄 TOPIC</button>)}
-                    {onReset && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'16px', color:'#f472b6', fontWeight:'bold'}} title="Reset Identity">🔄🎮</button>)}
-                </div>
-            </div>
-
-            {mode === "vision" ? (
-                <div className="vision-mode-container" style={{ position: 'relative', width: '100%', height: '250px', borderRadius: '12px', overflow: 'hidden', marginBottom: '15px', border: '1px solid #a78bfa' }}>
-                    <div className="vision-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: `url(${mission.image})`, backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 1 }} />
-                    
-                    {/* 🟢 FIX: Locked text to the bottom of the image with absolute positioning and a dark gradient for guaranteed visibility on Android */}
-                    <div className="vision-text-block" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', padding: '20px 10px 10px 10px', background: 'linear-gradient(to top, rgba(0,0,0,0.95), transparent)', textAlign: 'center', textShadow: '1px 1px 2px #000', zIndex: 2, boxSizing: 'border-box' }}>
-                        {mission.subtext && <p className="subtext" style={{ color: '#facc15', margin: '0 0 5px 0', fontSize: '11px', letterSpacing: '1px' }}>{mission.subtext}</p>}
-                        <p className="main-text" style={{ color: '#ffffff', fontWeight: 'bold', margin: 0, fontSize: '15px' }}>{mission.text}</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="mission-card">
-                    <div className="doodle-bg" style={{backgroundImage: `url(${mission.image})`}} />
-                    {/* 🟢 FIX: Added heavy text-shadow and forced bright colors for Speed Chat & Archivist */}
-                    <div className="mission-content-overlay" style={{ textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>
-                        <div>
-                            {mission.subtext && <p style={{fontSize:'0.8em', opacity: 0.9, marginBottom:'5px', color: '#38bdf8'}}>{mission.subtext}</p>}
-                            <p style={{color: '#ffffff', fontWeight: 'bold', fontSize: '1.1em'}}>{mission.text}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            <div className="control-panel">
-                {(step === "RECORD" || step === "REVIEW") && (
-                    <div className="dialect-selector" style={{marginBottom: '10px'}}>
-                        <label>PLEASE CHOOSE OR ADD YOUR TARGET ENGLISH/CREOLE DIALECT.</label>
-                        <select value={dialect} onChange={e => setDialect(e.target.value)}>
-                            {dialects.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        
-                        {dialect === "+ Add New Dialect" && (
-                            <div style={{marginTop: '10px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
-                                <input className="cyber-input" placeholder="Enter Dialect Name (e.g. Scottish Gaelic)" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
-                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-                                    <span style={{fontSize: '12px', color: '#94a3b8'}}>Human Check: {captchaMath.a} + {captchaMath.b} =</span>
-                                    <input className="cyber-input" style={{width: '60px', padding: '5px', textAlign: 'center'}} type="number" value={captcha} onChange={e => setCaptcha(e.target.value)} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {step === "RECORD" && (
-                    <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                        {timer !== undefined && recStatus === "recording" && (
-                            <div style={{ fontSize: '28px', fontWeight: 'bold', color: timer <= 3 ? '#ef4444' : '#38bdf8', marginBottom: '15px', textShadow: '0 0 10px rgba(56, 189, 248, 0.5)'}}>
-                                {/* 🟢 FIX: Displays TIME'S UP when the clock hits zero */}
-                                {timer === 0 ? "🛑 TIME'S UP!" : `⏱️ 00:${timer < 10 ? `0${timer}` : timer}`}
-                            </div>
-                        )}
-                        <button 
-                            className={`cyber-button ${recStatus === 'recording' ? 'recording pulsing' : ''}`}
-                            onPointerDown={startRec} onPointerUp={stopRec} onTouchStart={startRec} onTouchEnd={stopRec}
-                            style={{ width: '100%', padding: '20px', fontSize: '16px', backgroundColor: recStatus === 'recording' ? '#ef4444' : 'rgba(0,0,0,0.5)' }}
-                        >
-                            {recStatus === "recording" ? "🔴 RECORDING... RELEASE TO SEND" : "🎙️ HOLD TO SPEAK"}
-                        </button>
-                    </div>
-                )}
-                
-                {(step === "ANALYZING" || step === "MINTING") && <div className="loading">PROCESSING...</div>}
-                
-                {step === "REVIEW" && (
-                    <div className="review-box">
-                        <div className="audio-preview" style={{marginBottom: '10px'}}><label style={{fontSize:'10px', color:'#94a3b8', display:'block', marginBottom:'5px'}}>REVIEW RECORDING:</label><audio src={mediaBlob} controls style={{width: '100%', borderRadius: '8px'}} /></div>
-                        <div className="input-group"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}><label>I HEARD (EDIT IF NEEDED):</label></div><textarea value={transcribed} onChange={e => setTranscribed(e.target.value)} /></div>
-                        <div className="input-group"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'5px'}}><label style={{margin:0}}>MEANING:</label><button onClick={handleRegenerate} disabled={isRegenerating} style={{background: 'transparent', border: '1px solid #38bdf8', color: '#38bdf8', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer'}}>{isRegenerating ? "UPDATING..." : "🔄 REGENERATE FROM TEXT"}</button></div><textarea value={clarification} onChange={e => setClarification(e.target.value)} /></div>
-                        <div className="input-group"><label>TONE:</label><select value={tone} onChange={e => setTone(e.target.value)}>{TONES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                        <div className="action-row">
-                            <button className="cancel-btn" onClick={() => { if(clearBlobUrl) clearBlobUrl(); setLastProcessedBlob(null); setStep("RECORD"); }}>RETRY</button>
-                            <button className="cyber-button" onClick={handleSubmit}>MINT (+50 XP)</button>
-                        </div>
-                    </div>
-                )}
-                
-                {/* 🟢 FIX: Call the CustomEvent to open the Feedback Modal */}
-                <div style={{textAlign: 'center', marginTop: '15px', paddingBottom: '10px'}}>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('open-feedback'))} style={{background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer'}}>
-                        💬 Submit Secure Feedback
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ==========================================
 // 👂 GAME 4: THE LISTENER 
 // ==========================================
 function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, operator }) {
@@ -1248,5 +1058,564 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
         </div>
     );
 }
+
+// ==========================================
+// 🌉 GAME 5: CONVO BRIDGE (Turn-Based Live Translation)
+// ==========================================
+function GameConvoBridge({ userKey, dialects, onBack }) {
+    const [p1Dialect, setP1Dialect] = useState(dialects[0] || "General English");
+    const [p2Dialect, setP2Dialect] = useState(dialects.length > 1 ? dialects[1] : "General English");
+    const [chatLog, setChatLog] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [voices, setVoices] = useState([]);
+
+    useEffect(() => {
+        const loadVoices = () => setVoices(window.speechSynthesis.getVoices().filter(v => v.lang.startsWith("en")));
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }, []);
+
+    const speak = (text) => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            if (voices.length > 0) u.voice = voices[Math.floor(Math.random() * voices.length)]; // Randomize voice for now
+            window.speechSynthesis.speak(u);
+        }
+    };
+
+    const handleTurn = async (blobUrl, blob, speaker) => {
+        setIsProcessing(true);
+        const sourceDialect = speaker === "P1" ? p1Dialect : p2Dialect;
+        const targetDialect = speaker === "P1" ? p2Dialect : p1Dialect;
+
+        try {
+            const app = await Client.connect(SPACE_URL); // Using your singleton client
+            
+            // 1. Transcribe the audio
+            const tRes = await app.predict("/transcribe_check", [blob, sourceDialect]);
+            const originalText = tRes.data[0];
+            
+            // 2. Translate to the other player's dialect
+            const transRes = await app.predict("/translate_peer", [originalText, sourceDialect, targetDialect]);
+            const translatedText = transRes.data[0];
+
+            // 3. Update the chat log
+            setChatLog(prev => [...prev, {
+                sender: speaker,
+                original: originalText,
+                translated: translatedText,
+                sourceD: sourceDialect,
+                targetD: targetDialect
+            }]);
+
+            // 4. Read it out loud to the other player
+            speak(translatedText);
+
+        } catch (e) {
+            console.error("Translation failed:", e);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const { status: p1Status, startRecording: startP1, stopRecording: stopP1 } = useReactMediaRecorder({ audio: true, onStop: (url, blob) => handleTurn(url, blob, "P1") });
+    const { status: p2Status, startRecording: startP2, stopRecording: stopP2 } = useReactMediaRecorder({ audio: true, onStop: (url, blob) => handleTurn(url, blob, "P2") });
+
+    return (
+        <div className="game-layout">
+            <div className="listener-header" style={{display:'flex', alignItems:'center', gap:'10px', marginBottom: '15px'}}>
+                <button onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px'}}>🏠←</button>
+                <h3 style={{margin: 0, color: '#22c55e', flex: 1}}>CONVO BRIDGE</h3>
+                <button onClick={() => setChatLog([])} style={{background:'rgba(0,0,0,0.3)', border:'none', borderRadius:'8px', padding:'4px 8px', color:'#ef4444', fontSize:'12px'}}>🗑️ CLEAR</button>
+            </div>
+
+            <div style={{display: 'flex', flexDirection: 'column', gap: '10px', height: '100%'}}>
+                
+                {/* PLAYER 2 (Top - Flipped for sitting across a table) */}
+                <div style={{background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '15px', borderTop: '3px solid #f472b6', flex: 1, display: 'flex', flexDirection: 'column'}}>
+                    <select className="cyber-input" value={p2Dialect} onChange={e => setP2Dialect(e.target.value)} style={{marginBottom: '10px', color: '#f472b6'}}>
+                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <button 
+                        className={`record-btn ${p2Status === "recording" ? "pulsing" : ""}`} 
+                        onMouseDown={startP2} onMouseUp={stopP2} onTouchStart={startP2} onTouchEnd={stopP2}
+                        disabled={isProcessing || p1Status === "recording"}
+                        style={{width: '100%', padding: '20px', background: p2Status === "recording" ? '#ef4444' : '#334155'}}
+                    >
+                        {p2Status === "recording" ? "🔴 RECORDING..." : isProcessing ? "⏳ TRANSLATING..." : "🎙️ P2 HOLD TO SPEAK"}
+                    </button>
+                </div>
+
+                {/* CHAT LOG (Middle) */}
+                <div style={{height: '250px', overflowY: 'auto', background: '#0f172a', borderRadius: '12px', padding: '10px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                    {chatLog.length === 0 && <div style={{textAlign: 'center', color: '#64748b', marginTop: '50px'}}>Hold a button to start translating.</div>}
+                    {chatLog.map((msg, i) => (
+                        <div key={i} style={{alignSelf: msg.sender === "P1" ? 'flex-end' : 'flex-start', background: msg.sender === "P1" ? 'rgba(56, 189, 248, 0.2)' : 'rgba(244, 114, 182, 0.2)', padding: '10px', borderRadius: '8px', maxWidth: '80%', border: `1px solid ${msg.sender === "P1" ? '#38bdf8' : '#f472b6'}`}}>
+                            <p style={{fontSize: '10px', color: '#94a3b8', margin: '0 0 5px 0'}}>{msg.sourceD} → {msg.targetD}</p>
+                            <p style={{margin: '0 0 5px 0', fontSize: '12px', opacity: 0.8}}>"{msg.original}"</p>
+                            <p style={{margin: 0, fontWeight: 'bold', color: '#fff'}}>{msg.translated}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* PLAYER 1 (Bottom) */}
+                <div style={{background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '15px', borderBottom: '3px solid #38bdf8', flex: 1, display: 'flex', flexDirection: 'column'}}>
+                    <select className="cyber-input" value={p1Dialect} onChange={e => setP1Dialect(e.target.value)} style={{marginBottom: '10px', color: '#38bdf8'}}>
+                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <button 
+                        className={`record-btn ${p1Status === "recording" ? "pulsing" : ""}`} 
+                        onMouseDown={startP1} onMouseUp={stopP1} onTouchStart={startP1} onTouchEnd={stopP1}
+                        disabled={isProcessing || p2Status === "recording"}
+                        style={{width: '100%', padding: '20px', background: p1Status === "recording" ? '#ef4444' : '#334155'}}
+                    >
+                        {p1Status === "recording" ? "🔴 RECORDING..." : isProcessing ? "⏳ TRANSLATING..." : "🎙️ P1 HOLD TO SPEAK"}
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+    );
+}
+
+// ==========================================
+// 📡 GAME 6: HUMAN CONVO (Automated Matchmaking)
+// ==========================================
+function GameHumanConvo({ userKey, operator, dialects, onBack }) {
+    const [phase, setPhase] = useState("setup"); // setup -> searching -> chat
+    const [roomCode, setRoomCode] = useState("");
+    
+    const [myDialect, setMyDialect] = useState(dialects[0] || "General English");
+    const [partnerDialect, setPartnerDialect] = useState("");
+    
+    const [chatLog, setChatLog] = useState([]);
+    const [transcribedText, setTranscribedText] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    
+    const chatLogRef = useRef(chatLog);
+    const endOfMessagesRef = useRef(null);
+
+    useEffect(() => { chatLogRef.current = chatLog; }, [chatLog]);
+
+    // 1. MATCHMAKING POLLING
+    useEffect(() => {
+        if (phase !== "searching") return;
+        
+        const checkMatch = async () => {
+            try {
+                const app = await Client.connect(SPACE_URL);
+                const res = await app.predict("/check_match", [operator]);
+                const data = JSON.parse(res.data[0]);
+                
+                if (data.status === "matched") {
+                    setRoomCode(data.room_id);
+                    setPartnerDialect(data.partner_dialect);
+                    setPhase("chat");
+                }
+            } catch (e) { console.error("Match check error", e); }
+        };
+
+        const interval = setInterval(checkMatch, 2500); // Poll every 2.5s
+        return () => clearInterval(interval);
+    }, [phase, operator]);
+
+    // 2. CHAT POLLING
+    useEffect(() => {
+        if (phase !== "chat" || !roomCode) return;
+        
+        const pollMessages = async () => {
+            try {
+                const app = await Client.connect(SPACE_URL);
+                const currentLength = chatLogRef.current.length;
+                const res = await app.predict("/relay_poll", [roomCode, currentLength]);
+                const newMsgs = JSON.parse(res.data[0]);
+                
+                if (newMsgs && newMsgs.length > 0) {
+                    setChatLog(prev => [...prev, ...newMsgs]);
+                    setTimeout(() => endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                }
+            } catch (e) {} 
+        };
+
+        const interval = setInterval(pollMessages, 3000); 
+        return () => clearInterval(interval);
+    }, [phase, roomCode]);
+
+    const handleStartSearch = async () => {
+        setPhase("searching");
+        try {
+            const app = await Client.connect(SPACE_URL);
+            await app.predict("/join_queue", [operator, myDialect]);
+        } catch (e) {
+            alert("Failed to join network. Retrying...");
+            setPhase("setup");
+        }
+    };
+
+    const handleCancelSearch = async () => {
+        setPhase("setup");
+        try {
+            const app = await Client.connect(SPACE_URL);
+            await app.predict("/leave_queue", [operator]);
+        } catch (e) {}
+    };
+
+    const handleAudioStop = async (blobUrl, blob) => {
+        setTranscribedText("⏳ Transcribing audio...");
+        setIsEditing(true);
+        try {
+            const app = await Client.connect(SPACE_URL);
+            const res = await app.predict("/transcribe_check", [blob, myDialect]);
+            setTranscribedText(res.data[0]);
+        } catch (e) {
+            setTranscribedText("Error transcribing. Please type your message.");
+        }
+    };
+
+    const { status, startRecording, stopRecording } = useReactMediaRecorder({ audio: true, onStop: handleAudioStop });
+
+    const handleSend = async () => {
+        if (!transcribedText.trim()) return;
+        setIsSending(true);
+        try {
+            const app = await Client.connect(SPACE_URL);
+            await app.predict("/relay_send", [roomCode, operator, transcribedText, myDialect, partnerDialect]);
+            setIsEditing(false);
+            setTranscribedText("");
+        } catch (e) {
+            alert("Failed to send message.");
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    if (phase === "setup") {
+        return (
+            <div className="game-layout">
+                <div className="mission-card" style={{padding: '30px', textAlign: 'center'}}>
+                    <div className="icon-large">📡</div>
+                    <h2 style={{color: '#f97316'}}>GLOBAL NETWORK</h2>
+                    <p style={{fontSize: '12px', color: '#cbd5e1', marginBottom: '20px'}}>Join the pool to securely match with another Operator.</p>
+                    
+                    <label style={{fontSize: '10px', color: '#94a3b8'}}>YOUR DIALECT:</label>
+                    <select className="cyber-input" value={myDialect} onChange={e => setMyDialect(e.target.value)} style={{marginBottom: '30px', color: '#f97316'}}>
+                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+
+                    <div style={{display: 'flex', gap: '10px'}}>
+                        <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
+                        <button className="cyber-button" onClick={handleStartSearch} style={{flex: 2, background: '#f97316', color: '#000'}}>FIND PARTNER</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (phase === "searching") {
+        return (
+            <div className="game-layout">
+                <div className="mission-card" style={{padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                    <div className="radar-spinner" style={{width: '80px', height: '80px', borderRadius: '50%', border: '4px solid #f97316', borderTopColor: 'transparent', animation: 'spin 1s linear infinite', marginBottom: '20px'}}></div>
+                    <h3 style={{color: '#f97316'}}>SCANNING NETWORK...</h3>
+                    <p style={{fontSize: '12px', color: '#94a3b8', marginBottom: '30px'}}>Looking for available Operators.</p>
+                    <button className="cancel-btn" onClick={handleCancelSearch} style={{width: '100%'}}>ABORT SEARCH</button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="game-layout" style={{display: 'flex', flexDirection: 'column'}}>
+            <div className="listener-header" style={{display:'flex', alignItems:'center', gap:'10px', marginBottom: '10px', flexShrink: 0}}>
+                <button onClick={handleCancelSearch} style={{background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', fontSize:'20px'}}>🔌</button>
+                <h3 style={{margin: 0, color: '#f97316', flex: 1, fontSize: '14px'}}>LINKED: {partnerDialect.toUpperCase()}</h3>
+            </div>
+
+            {/* CHAT WINDOW */}
+            <div style={{flex: 1, overflowY: 'auto', background: 'rgba(0,0,0,0.5)', borderRadius: '12px', padding: '15px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '10px'}}>
+                {chatLog.length === 0 && <div style={{textAlign: 'center', color: '#64748b', marginTop: '50px'}}>Connection secured. Start speaking.</div>}
+                
+                {chatLog.map((msg, i) => {
+                    const isMe = msg.sender === operator;
+                    return (
+                        <div key={i} style={{alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%'}}>
+                            <div style={{fontSize: '9px', color: '#64748b', textAlign: isMe ? 'right' : 'left', marginBottom: '2px'}}>{msg.dialect}</div>
+                            <div style={{background: isMe ? 'rgba(249, 115, 22, 0.2)' : 'rgba(56, 189, 248, 0.2)', padding: '10px', borderRadius: '12px', border: `1px solid ${isMe ? '#f97316' : '#38bdf8'}`}}>
+                                <p style={{margin: 0, color: '#fff', fontSize: '14px'}}>{msg.original}</p>
+                            </div>
+                            
+                            {/* 🟢 SMART PROMPT INTERVENTION */}
+                            {msg.translation && (
+                                <div style={{background: '#1e293b', borderLeft: '3px solid #facc15', padding: '8px', marginTop: '5px', borderRadius: '4px', fontSize: '11px'}}>
+                                    <strong style={{color: '#facc15'}}>🤖 Meaning ({msg.target_dialect}):</strong> <span style={{color: '#cbd5e1'}}>{msg.translation}</span>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                <div ref={endOfMessagesRef} />
+            </div>
+
+            {/* INPUT AREA */}
+            <div style={{background: '#0f172a', padding: '15px', borderRadius: '12px', border: '1px solid #f97316', flexShrink: 0}}>
+                {!isEditing ? (
+                    <button 
+                        className={`record-btn ${status === "recording" ? "pulsing" : ""}`} 
+                        onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
+                        style={{width: '100%', padding: '20px', background: status === "recording" ? '#ef4444' : '#334155'}}
+                    >
+                        {status === "recording" ? "🔴 RECORDING..." : "🎙️ HOLD TO SPEAK"}
+                    </button>
+                ) : (
+                    <div>
+                        <label style={{fontSize: '10px', color: '#94a3b8', marginBottom: '5px', display: 'block'}}>EDIT TRANSCRIPT BEFORE SENDING:</label>
+                        <textarea className="cyber-input" value={transcribedText} onChange={e => setTranscribedText(e.target.value)} style={{height: '60px', marginBottom: '10px', width: '100%', boxSizing: 'border-box'}} />
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <button className="cancel-btn" onClick={() => setIsEditing(false)} style={{flex: 1}}>CANCEL</button>
+                            <button className="cyber-button" onClick={handleSend} disabled={isSending || transcribedText.includes("⏳")} style={{flex: 2, background: '#f97316', color: '#000'}}>
+                                {isSending ? "EVALUATING..." : "TRANSMIT 🚀"}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+
+// ==========================================
+// ⚙️ SHARED GAME LAYOUT 
+// ==========================================
+// 🟢 Added onChangeTopic to the props
+function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, clearBlobUrl, dialects, setDialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset, onChangeTopic }) {
+    const [step, setStep] = useState("RECORD"); 
+    const [transcribed, setTranscribed] = useState("");
+    const [clarification, setClarification] = useState("");
+    const [tone, setTone] = useState("Neutral / Conversational"); 
+    const [context, setContext] = useState("General");
+    const [pragmatics, setPragmatics] = useState("");
+    const [isRegenerating, setIsRegenerating] = useState(false); 
+    const [dialect, setDialect] = useState(dialects[0] || "General");
+    
+    const [customD, setCustomD] = useState("");
+    const [captcha, setCaptcha] = useState("");
+    const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
+
+    useEffect(() => {
+        if (dialects.length > 0 && !dialects.includes(dialect)) { setDialect(dialects[0]); }
+    }, [dialects]);
+
+    useEffect(() => {
+        if (dialect === "+ Add New Dialect") {
+            setCaptchaMath({
+                a: Math.floor(Math.random() * 10) + 1,
+                b: Math.floor(Math.random() * 10) + 1
+            });
+            setCaptcha(""); 
+        }
+    }, [dialect]);
+
+    const [lastProcessedBlob, setLastProcessedBlob] = useState(null);
+    useEffect(() => {
+        if (mediaBlob && mediaBlob !== lastProcessedBlob && step === "RECORD") {
+            setLastProcessedBlob(mediaBlob);
+            handleAnalyze();
+        }
+    }, [mediaBlob, step, lastProcessedBlob]);
+
+    const handleAnalyze = async () => {
+        if (!mediaBlob) return;
+        setStep("ANALYZING");
+        try {
+            const blob = await fetch(mediaBlob).then(r => r.blob());
+            const app = await Client.connect(SPACE_URL);
+            const d = dialect === "+ Add New Dialect" ? customD : dialect;
+            const tRes = await app.predict("/transcribe_check", [blob, d]);
+            const text = tRes.data[0];
+            setTranscribed(text);
+            const cRes = await app.predict("/generate_clarifications", [text, d]);
+            parseClarification(cRes.data[0]);
+            setStep("REVIEW");
+        } catch (e) { 
+            setStep("REVIEW"); setTranscribed("Error analyzing audio."); 
+        }
+    };
+
+    const parseClarification = (rawData) => {
+        let data;
+        try { data = JSON.parse(rawData); } catch { data = { clarification: rawData }; }
+        setClarification(data.clarification || data.Meaning || rawData);
+        setContext(data.context || "General");
+        setPragmatics(data.pragmatics || "");
+    };
+
+    const handleRegenerate = async () => {
+        if (!transcribed.trim()) return;
+        setIsRegenerating(true);
+        try {
+            const app = await Client.connect(SPACE_URL);
+            const d = dialect === "+ Add New Dialect" ? customD : dialect;
+            const res = await app.predict("/generate_clarifications", [transcribed, d]);
+            parseClarification(res.data[0]);
+            setIsRegenerating(false);
+        } catch (e) { setClarification("Failed to regenerate."); setIsRegenerating(false); }
+    };
+
+    const handleSubmit = async () => {
+        if (dialect === "+ Add New Dialect") {
+            if (!customD.trim()) { alert("Please type a new dialect name."); return; }
+            if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
+                alert(`Bot Check Failed! ${captchaMath.a} + ${captchaMath.b} = ${captchaMath.a + captchaMath.b}.`); 
+                return; 
+            }
+        }
+
+        setStep("MINTING");
+        try {
+            const app = await Client.connect(SPACE_URL);
+            const d = dialect === "+ Add New Dialect" ? customD : dialect;
+            let wrappedAudio = null;
+            if (mediaBlob) {
+                try {
+                    const blob = await fetch(mediaBlob).then(r => r.blob());
+                    const audioFile = new File([blob], `capture_${Date.now()}.wav`, { type: "audio/wav" });
+                    wrappedAudio = handle_file(audioFile);
+                } catch (e) {}
+            }
+            const finalOperatorId = operator || "0xUnknown";
+            await app.predict("/check_and_submit_logic", [
+                transcribed, d, customD, clarification, tone, context, pragmatics,
+                sourceTag || "Unknown Game", "User/AI Hybrid", finalOperatorId, wrappedAudio, false
+            ]);
+            setXP(p => p + 50);
+            if (customD && dialect === "+ Add New Dialect") {
+                setDialects(prev => {
+                    const clean = prev.filter(d => d !== "+ Add New Dialect");
+                    return Array.from(new Set([customD, ...clean, "+ Add New Dialect"]));
+                });
+                setDialect(customD);
+            }
+            setStep("💎 Contribution Saved!"); 
+            setTranscribed(""); setClarification(""); setCaptcha("");
+            
+            setTimeout(() => {
+                if (onNext) { 
+                    if(clearBlobUrl) clearBlobUrl();
+                    setLastProcessedBlob(null);
+                    setStep("RECORD"); 
+                    // 🟢 FIX: Pass the user's transcript & clarification UP to the game engine
+                    onNext(transcribed, clarification); 
+                } else { onBack(); }
+            }, 1500);
+
+        } catch (e) { setStep("RECORD"); }
+    };
+
+    return (
+        <div className="game-layout">
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: '10px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                    {onBack && <button className="back-icon" onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px', padding:'0'}} title="Back to Menu">🏠←</button>}
+                    <div>
+                        <h3 style={{margin: 0, color: '#f8fafc'}}>{title}</h3>
+                    </div>
+                </div>
+                <div style={{display:'flex', gap:'5px', alignItems: 'center'}}>
+                    {/* 🟢 NEW: The manual Change Topic button */}
+                    {onChangeTopic && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'11px', color:'#f472b6', fontWeight:'bold'}} title="Change Topic">🔄 TOPIC</button>)}
+                    {onReset && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'16px', color:'#f472b6', fontWeight:'bold'}} title="Reset Identity">🔄🎮</button>)}
+                </div>
+            </div>
+
+            {mode === "vision" ? (
+                <div className="vision-mode-container" style={{ position: 'relative', width: '100%', height: '250px', borderRadius: '12px', overflow: 'hidden', marginBottom: '15px', border: '1px solid #a78bfa' }}>
+                    <div className="vision-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: `url(${mission.image})`, backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 1 }} />
+                    
+                    {/* 🟢 FIX: Locked text to the bottom of the image with absolute positioning and a dark gradient for guaranteed visibility on Android */}
+                    <div className="vision-text-block" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', padding: '20px 10px 10px 10px', background: 'linear-gradient(to top, rgba(0,0,0,0.95), transparent)', textAlign: 'center', textShadow: '1px 1px 2px #000', zIndex: 2, boxSizing: 'border-box' }}>
+                        {mission.subtext && <p className="subtext" style={{ color: '#facc15', margin: '0 0 5px 0', fontSize: '11px', letterSpacing: '1px' }}>{mission.subtext}</p>}
+                        <p className="main-text" style={{ color: '#ffffff', fontWeight: 'bold', margin: 0, fontSize: '15px' }}>{mission.text}</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="mission-card">
+                    <div className="doodle-bg" style={{backgroundImage: `url(${mission.image})`}} />
+                    {/* 🟢 FIX: Added heavy text-shadow and forced bright colors for Speed Chat & Archivist */}
+                    <div className="mission-content-overlay" style={{ textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>
+                        <div>
+                            {mission.subtext && <p style={{fontSize:'0.8em', opacity: 0.9, marginBottom:'5px', color: '#38bdf8'}}>{mission.subtext}</p>}
+                            <p style={{color: '#ffffff', fontWeight: 'bold', fontSize: '1.1em'}}>{mission.text}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            <div className="control-panel">
+                {(step === "RECORD" || step === "REVIEW") && (
+                    <div className="dialect-selector" style={{marginBottom: '10px'}}>
+                        <label>PLEASE CHOOSE OR ADD YOUR TARGET ENGLISH/CREOLE DIALECT.</label>
+                        <select value={dialect} onChange={e => setDialect(e.target.value)}>
+                            {dialects.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        
+                        {dialect === "+ Add New Dialect" && (
+                            <div style={{marginTop: '10px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
+                                <input className="cyber-input" placeholder="Enter Dialect Name (e.g. Scottish Gaelic)" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
+                                    <span style={{fontSize: '12px', color: '#94a3b8'}}>Human Check: {captchaMath.a} + {captchaMath.b} =</span>
+                                    <input className="cyber-input" style={{width: '60px', padding: '5px', textAlign: 'center'}} type="number" value={captcha} onChange={e => setCaptcha(e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {step === "RECORD" && (
+                    <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                        {timer !== undefined && recStatus === "recording" && (
+                            <div style={{ fontSize: '28px', fontWeight: 'bold', color: timer <= 3 ? '#ef4444' : '#38bdf8', marginBottom: '15px', textShadow: '0 0 10px rgba(56, 189, 248, 0.5)'}}>
+                                {/* 🟢 FIX: Displays TIME'S UP when the clock hits zero */}
+                                {timer === 0 ? "🛑 TIME'S UP!" : `⏱️ 00:${timer < 10 ? `0${timer}` : timer}`}
+                            </div>
+                        )}
+                        <button 
+                            className={`cyber-button ${recStatus === 'recording' ? 'recording pulsing' : ''}`}
+                            onPointerDown={startRec} onPointerUp={stopRec} onTouchStart={startRec} onTouchEnd={stopRec}
+                            style={{ width: '100%', padding: '20px', fontSize: '16px', backgroundColor: recStatus === 'recording' ? '#ef4444' : 'rgba(0,0,0,0.5)' }}
+                        >
+                            {recStatus === "recording" ? "🔴 RECORDING... RELEASE TO SEND" : "🎙️ HOLD TO SPEAK"}
+                        </button>
+                    </div>
+                )}
+                
+                {(step === "ANALYZING" || step === "MINTING") && <div className="loading">PROCESSING...</div>}
+                
+                {step === "REVIEW" && (
+                    <div className="review-box">
+                        <div className="audio-preview" style={{marginBottom: '10px'}}><label style={{fontSize:'10px', color:'#94a3b8', display:'block', marginBottom:'5px'}}>REVIEW RECORDING:</label><audio src={mediaBlob} controls style={{width: '100%', borderRadius: '8px'}} /></div>
+                        <div className="input-group"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}><label>I HEARD (EDIT IF NEEDED):</label></div><textarea value={transcribed} onChange={e => setTranscribed(e.target.value)} /></div>
+                        <div className="input-group"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'5px'}}><label style={{margin:0}}>MEANING:</label><button onClick={handleRegenerate} disabled={isRegenerating} style={{background: 'transparent', border: '1px solid #38bdf8', color: '#38bdf8', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer'}}>{isRegenerating ? "UPDATING..." : "🔄 REGENERATE FROM TEXT"}</button></div><textarea value={clarification} onChange={e => setClarification(e.target.value)} /></div>
+                        <div className="input-group"><label>TONE:</label><select value={tone} onChange={e => setTone(e.target.value)}>{TONES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                        <div className="action-row">
+                            <button className="cancel-btn" onClick={() => { if(clearBlobUrl) clearBlobUrl(); setLastProcessedBlob(null); setStep("RECORD"); }}>RETRY</button>
+                            <button className="cyber-button" onClick={handleSubmit}>MINT (+50 XP)</button>
+                        </div>
+                    </div>
+                )}
+                
+                {/* 🟢 FIX: Call the CustomEvent to open the Feedback Modal */}
+                <div style={{textAlign: 'center', marginTop: '15px', paddingBottom: '10px'}}>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('open-feedback'))} style={{background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer'}}>
+                        💬 Submit Secure Feedback
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 export default App;
