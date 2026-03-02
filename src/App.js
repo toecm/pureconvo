@@ -56,7 +56,7 @@ const GAME_ASSETS = {
 const SPACE_URL = "toecm/PureVersation"; 
 
 const FALLBACK_DIALECTS = [
-  "African American Vernacular English", "American English", "British English", "Gullah Creole", "Indian English", "Indonesian English", "Jamican Patois Creole", "Korean English", "Malaysian English", "Nigerian English", "Nigerian Pidgin English", "South African English",
+  "African American Vernacular English", "American English", "British English", "Gullah Creole", "Indian English", "Indonesian English", "Jamaican Patois", "Korean English", "Malaysian English", "Nigerian English", "Nigerian Pidgin English", "South African English",
   "+ Add New Dialect"
 ];
 
@@ -295,36 +295,29 @@ function App() {
 
     let opAddr = localStorage.getItem("pureversation_operator_addr");
     if (!opAddr) {
-        // 🟢 FIX: Combine two UUIDs to guarantee we have enough hex characters to make a 42-char address
         const validHex = (uuidv4().replace(/-/g, "") + uuidv4().replace(/-/g, "")).slice(0, 40);
         opAddr = "0x" + validHex;
         localStorage.setItem("pureversation_operator_addr", opAddr);
     }
     setAddress(opAddr);
 
-    const checkSync = async () => {
-          try {
-              const app = await Client.connect(SPACE_URL);
-              const res = await app.predict("/check_cloud_sync");
-              setCloudStatus(res.data[0]); 
-          } catch (e) { setCloudStatus("🔴 SYNC OFFLINE"); }
-      };
-      
-      checkSync();
-      const syncInterval = setInterval(checkSync, 300000); 
-      return () => clearInterval(syncInterval);
-
     const greetList = localStorage.getItem("pureversation_session_id") ? RETURNING_GREETINGS : NEW_GREETINGS;
     setGreeting(`${getRandom(greetList)} ${getRandom(PRIVACY_STATEMENTS)}`);
+
+    const checkSync = async () => {
+        try {
+            const app = await Client.connect(SPACE_URL);
+            const res = await app.predict("/check_cloud_sync");
+            setCloudStatus(res.data[0]); 
+        } catch (e) { setCloudStatus("🔴 SYNC OFFLINE"); }
+    };
 
     const loadDialects = async () => {
         try {
             const app = await Client.connect(SPACE_URL);
+            const res = await app.predict("/api_get_dialects"); 
             
-            // 🟢 FIX: Explicitly passing [] to prevent Gradio client input errors
-            const res = await app.predict("/api_get_dialects", []); 
-            
-            console.log("📡 RAW DIALECT DATA RECEIVED:", res.data[0]); // <--- Check your browser console!
+            console.log("📡 RAW DIALECT DATA RECEIVED:", res.data[0]);
             
             const rawData = res.data[0];
             let parsedArray = [];
@@ -350,7 +343,16 @@ function App() {
         }
     };
 
-    loadDialects();
+    // 🟢 FIX: Run them one after the other so Hugging Face doesn't block the simultaneous connection requests
+    const initializeApp = async () => {
+        await checkSync();
+        await loadDialects();
+    };
+
+    initializeApp();
+
+    const syncInterval = setInterval(checkSync, 300000); 
+    return () => clearInterval(syncInterval);
   }, []);
 
   const handleIDClick = () => {
@@ -873,7 +875,7 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
                         <h3 style={{margin: 0, color: '#f8fafc'}}>{title}</h3>
                     </div>
                 </div>
-                <div style={{display:'flex', gap:'5px'}}>
+                <div style={{display:'flex', gap:'5px', alignItems: 'center'}}>
                     {/* 🟢 NEW: The manual Change Topic button */}
                     {onChangeTopic && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'11px', color:'#f472b6', fontWeight:'bold'}} title="Change Topic">🔄 TOPIC</button>)}
                     {onReset && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'16px', color:'#f472b6', fontWeight:'bold'}} title="Reset Identity">🔄🎮</button>)}
@@ -1150,11 +1152,13 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
 
     return (
         <div className="game-layout listener-mode">
-            <div className="listener-header">
-                <button className="back-icon" onClick={onBack}>🏠←</button>
+            <div className="listener-header" style={{display:'flex', alignItems:'center', gap:'10px', marginBottom: '15px'}}>
+                <button className="back-icon" onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px', padding:'0'}} title="Back to Menu">🏠←</button>
                 <div className={`status-dot ${status === "recording" ? "pulsing-red" : ""}`}></div>
-                <h3>ECHO {nickname ? `| ${nickname.toUpperCase()}` : ""}</h3>
-                <button style={{marginLeft:'auto', background:'transparent', border:'none', fontSize:'16px', color:'#94a3b8', cursor:'pointer'}} onClick={handleReset}>🔄🎮</button>
+                <h3 style={{margin: 0, color: '#f8fafc', flex: 1}}>ECHO {nickname ? `| ${nickname.toUpperCase()}` : ""}</h3>
+                
+                {/* 🟢 FIX: Exact same Reset button styling as SharedGameLayout */}
+                <button onClick={handleReset} style={{background:'rgba(0,0,0,0.3)', border:'none', borderRadius:'50%', width:'40px', height:'30px', cursor:'pointer', fontSize:'16px', color:'#94a3b8', flexShrink: 0}} title="Reset Identity">🗑️</button>
             </div>
             {phase === "setup" ? (
                 <div className="setup-screen">
