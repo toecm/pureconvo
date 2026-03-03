@@ -51,8 +51,8 @@ const GAME_ASSETS = {
         ]
     },
     BRIDGE: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20mobile.jpg", // You can update this image later
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20vid.mp4",
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/convo%20bridge%20mobile.png", // You can update this image later
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/convo%20bridge%20vid.mp4",
         color: "#22c55e",
         instructions: [
             "1. Setup: Choose a dialect for Player 1 and Player 2.",
@@ -61,8 +61,8 @@ const GAME_ASSETS = {
         ]
     },
     CONVO: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20mobile.jpg", 
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20vid.mp4",
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/human%20convo%20mobile.png", 
+        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/human%20convo%20vid.mp4",
         color: "#f97316",
         instructions: [
             "1. Connect: Search for an anonymous partner online.",
