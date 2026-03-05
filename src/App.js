@@ -481,9 +481,7 @@ function HomeMenu({ onSelect, greeting }) {
             <div className="welcome-banner"><p>{greeting}</p></div>
             <div className="instruction-zone"><p>SELECT MISSION</p><div className="instruction-line"></div></div>
             <div className="menu-grid" style={{paddingBottom: '40px'}}>
-		<div className="menu-card" onClick={() => handleGameClick("BRIDGE")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.BRIDGE.image})`, backgroundSize: 'cover', border: '1px solid #22c55e'}}>
-                    <div className="icon-large">🌉</div><h3 style={{color: '#22c55e'}}>CONVO BRIDGE</h3><p>Live 2-Player Translation</p>
-                </div>
+		
                 <div className="menu-card" onClick={() => handleGameClick("LISTENER")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.LISTENER.image})`, backgroundSize: 'cover'}}>
                     <div className="icon-large">👂</div><h3>THE LISTENER</h3><p>Active Conversation Mode</p>
                 </div>
@@ -495,6 +493,9 @@ function HomeMenu({ onSelect, greeting }) {
                 </div>
                 <div className="menu-card" onClick={() => handleGameClick("VISION")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.VISION.image})`, backgroundSize: 'cover'}}>
                     <div className="icon-large">👁️</div><h3>VISION QUEST</h3><p>Describe what you see</p>
+                </div>
+		<div className="menu-card" onClick={() => handleGameClick("BRIDGE")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.BRIDGE.image})`, backgroundSize: 'cover', border: '1px solid #22c55e'}}>
+                    <div className="icon-large">🌉</div><h3 style={{color: '#22c55e'}}>CONVO BRIDGE</h3><p>Live 2-Player Translation</p>
                 </div>
 		<div className="menu-card" onClick={() => handleGameClick("CONVO")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.CONVO.image})`, backgroundSize: 'cover', border: '1px solid #f97316'}}>
             <div className="icon-large">📡</div><h3 style={{color: '#f97316'}}>HUMAN CONVO</h3><p>Remote 2-Device Chat</p>
