@@ -4,6 +4,7 @@ import { Client, handle_file } from "@gradio/client";
 import { useReactMediaRecorder } from "react-media-recorder";
 import './App.css';
 
+// ... (KEEP ALL ASSETS, CONFIG, GLOBAL VARIABLES, HELPER FUNCTIONS UNCHANGED) ...
 // --- 🎨 GAME ASSETS ---
 const GAME_ASSETS = {
     LISTENER: {
@@ -115,6 +116,7 @@ const getDoodleUrl = (k) => `https://loremflickr.com/400/200/${k},sketch/all?ran
 const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all?random=${Date.now()}`;
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+// ... (KEEP ConsentScreen, GameTutorial, FeedbackModal UNCHANGED) ...
 // ==========================================
 // 🟢 FIX 1: ETHICAL AI CONSENT SCREEN (Expanded with Tokenomics & Slashing)
 // ==========================================
@@ -279,6 +281,7 @@ function FeedbackModal({ onClose }) {
     );
 }
 
+// ... (KEEP App, HomeMenu, GameArchivist UNCHANGED) ...
 // ==========================================
 // 🚀 MAIN APP COMPONENT
 // ==========================================
@@ -543,6 +546,7 @@ function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting
     );
 }
 
+// ... (KEEP GameSpeedChat, GameVisionQuest, GameActiveListener, GameConvoBridge UNCHANGED) ...
 // ==========================================
 // ⚡ GAME 2: SPEED CHAT 
 // ==========================================
@@ -590,18 +594,18 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
     }, [status]);
 
     const fetchMission = async (topic) => {
-        setLoading(true);
-        setMission(prev => ({ ...prev, subtext: `Establishing Neural Link for: ${topic}...` }));
-        try {
-            // 🟢 FIX: Directly connect to the cloud space to ensure it never fails on the first load
-            const app = await Client.connect(SPACE_URL);
-            
-            // 🟢 FIX 1: Increased timeout from 4.5s to 8s to allow the LLM time to generate
-            const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
-            
-            // 🟢 FIX 2: Clearer prompt instructions for the AI
-            const prompt = `Topic: ${topic}. Ask a short, engaging 1-sentence question about this topic for a player named ${nickname}.`;
-            const apiPromise = app.predict("/generate_mission", [prompt]);
+        setLoading(true);
+        setMission(prev => ({ ...prev, subtext: `Establishing Neural Link for: ${topic}...` }));
+        try {
+            // 🟢 FIX: Directly connect to the cloud space to ensure it never fails on the first load
+            const app = await Client.connect(SPACE_URL);
+            
+            // 🟢 FIX 1: Increased timeout from 4.5s to 8s to allow the LLM time to generate
+            const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
+            
+            // 🟢 FIX 2: Clearer prompt instructions for the AI
+            const prompt = `Topic: ${topic}. Ask a short, engaging 1-sentence question about this topic for a player named ${nickname}.`;
+            const apiPromise = app.predict("/generate_mission", [prompt]);
             
             const res = await Promise.race([apiPromise, timeoutPromise]);
             
@@ -1069,6 +1073,7 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
     );
 }
 
+// ... (KEEP GameConvoBridge UNCHANGED) ...
 // ==========================================
 // 🌉 GAME 5: CONVO BRIDGE (Turn-Based Live Translation)
 // ==========================================
@@ -1100,7 +1105,7 @@ function GameConvoBridge({ userKey, dialects, onBack }) {
         const targetDialect = speaker === "P1" ? p2Dialect : p1Dialect;
 
         try {
-            const app = await Client.connect(SPACE_URL); // Using your singleton client
+            const app = await getClient(); // Using your singleton client
             
             // 1. Transcribe the audio
             const tRes = await app.predict("/transcribe_check", [blob, sourceDialect]);
@@ -1304,19 +1309,22 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
     if (phase === "setup") {
         return (
             <div className="game-layout">
-                <div className="mission-card" style={{padding: '30px', textAlign: 'center'}}>
-                    <div className="icon-large">📡</div>
-                    <h2 style={{color: '#f97316'}}>GLOBAL NETWORK</h2>
-                    <p style={{fontSize: '12px', color: '#cbd5e1', marginBottom: '20px'}}>Join the pool to securely match with another Operator.</p>
-                    
-                    <label style={{fontSize: '10px', color: '#94a3b8'}}>YOUR DIALECT:</label>
-                    <select className="cyber-input" value={myDialect} onChange={e => setMyDialect(e.target.value)} style={{marginBottom: '30px', color: '#f97316'}}>
-                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                {/* 🟢 FIX: Ensure the entire setup screen can scroll vertically on small devices */}
+                <div className="setup-screen" style={{ textAlign: 'center', padding: '15px', overflowY: 'auto', height: '100%' }}>
+                    <div className="mission-card" style={{padding: '30px', textAlign: 'center'}}>
+                        <div className="icon-large">📡</div>
+                        <h2 style={{color: '#f97316'}}>GLOBAL NETWORK</h2>
+                        <p style={{fontSize: '12px', color: '#cbd5e1', marginBottom: '20px'}}>Join the pool to securely match with another Operator.</p>
+                        
+                        <label style={{fontSize: '10px', color: '#94a3b8'}}>YOUR DIALECT:</label>
+                        <select className="cyber-input" value={myDialect} onChange={e => setMyDialect(e.target.value)} style={{marginBottom: '30px', color: '#f97316'}}>
+                            {dialects.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
 
-                    <div style={{display: 'flex', gap: '10px'}}>
-                        <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
-                        <button className="cyber-button" onClick={handleStartSearch} style={{flex: 2, background: '#f97316', color: '#000'}}>FIND PARTNER</button>
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
+                            <button className="cyber-button" onClick={handleStartSearch} style={{flex: 2, background: '#f97316', color: '#000'}}>FIND PARTNER</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1395,7 +1403,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
     );
 }
 
-
+// ... (KEEP SharedGameLayout UNCHANGED) ...
 // ==========================================
 // ⚙️ SHARED GAME LAYOUT 
 // ==========================================
@@ -1626,6 +1634,5 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
         </div>
     );
 }
-
 
 export default App;
