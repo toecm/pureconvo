@@ -1315,8 +1315,8 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
                     </select>
 
                     <div style={{display: 'flex', gap: '10px'}}>
-                        <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
                         <button className="cyber-button" onClick={handleStartSearch} style={{flex: 2, background: '#f97316', color: '#000'}}>FIND PARTNER</button>
+						<button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
                     </div>
                 </div>
             </div>
