@@ -1,1631 +1,722 @@
-import { v4 as uuidv4 } from 'uuid';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Client, handle_file } from "@gradio/client";
-import { useReactMediaRecorder } from "react-media-recorder";
-import './App.css';
+/* --- APP.CSS: Compact Mobile HUD --- */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap');
 
-// --- 🎨 GAME ASSETS ---
-const GAME_ASSETS = {
-    LISTENER: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20mobile.jpg",
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20listener%20vid.mp4",
-        color: "#38bdf8",
-        instructions: [
-            "1. Introduce Yourself: Say your name.",
-            "2. Speak Naturally: Answer Echo's questions.",
-            "3a. Confirm: Okay with the generated texts? Confirm, or (3b)",
-            "3b. Edit: Correct the transcript of what you said.",
-            "4. Verify: Click on UPDATE MEANING to reload the meaning.",
-            "5. Re-Train: Make corrections to the reloaded meaning.",
-            "6. Mint: Save your unique dialect data."
-        ]
-    },
-    ARCHIVIST: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20mobile.jpg",
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/the%20archivist%20vid.mp4",
-        color: "#facc15",
-        instructions: [
-            "1. Get a Topic: The Archivist gives you a theme.",
-            "2. Record: Tell a short story or monologue.",
-            "3. Mint: Preserve your story in the archive."
-        ]
-    },
-    SPEED: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/speed%20chat%20mobile.jpg",
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/speed%20chat%20vid.mp4",
-        color: "#f472b6",
-        instructions: [
-            "1. Watch the Timer: You have 10 seconds.",
-            "2. React Fast: Speak the first thing on your mind.",
-            "3. Don't Overthink: Keep the flow going."
-        ]
-    },
-    VISION: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/vision%20quest%20mobile.jpg",
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/vision%20quest%20vid.mp4",
-        color: "#a78bfa",
-        instructions: [
-            "1. Observe: Look at the image provided.",
-            "2. Describe: Explain what you see in detail.",
-            "3. Mint: Teach the AI visual context."
-        ]
-    },
-    BRIDGE: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/convo%20bridge%20mobile.png", // You can update this image later
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/convo%20bridge%20vid.mp4",
-        color: "#22c55e",
-        instructions: [
-            "1. Setup: Choose a dialect for Player 1 and Player 2.",
-            "2. Take Turns: Hold your respective button to speak.",
-            "3. Listen: The app will translate and speak to the other player."
-        ]
-    },
-    CONVO: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/human%20convo%20mobile.png", 
-        video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/human%20convo%20vid.mp4",
-        color: "#f97316",
-        instructions: [
-            "1. Connect: Search for an anonymous partner online.",
-            "2. Record & Edit: Speak naturally in your dialect.",
-            "3. Contribute: Your verified chats are saved to the blockchain.",
-            "4. Smart Prompts: AI intervenes to translate heavy slang for your partner."
-        ]
+/* 1. Global Reset & Background */
+/* =========================================
+   1. RESPONSIVE CONTAINER SETUP
+   ========================================= */
+:root {
+    --app-max-width: 480px; /* Standard Mobile Width */
+    --app-bg: #0f172a;
+    --desktop-bg: #1e293b;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--desktop-bg); /* Darker background for desktop margins */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden; /* Prevent double scrollbars */
+}
+
+/* The Main App Container */
+.App {
+    width: 100%;
+    height: 100vh;
+    background-color: var(--app-bg); /* This is dark (#0f172a) */
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    
+    /* 🟢 GLOBAL TEXT FIX: Default to light text on dark bg */
+    color: #f8fafc; /* Slate-50 (Near White) */
+}
+
+/* 🟢 SPECIFIC GREETING FIX */
+.greeting-text, h1, h2, h3 {
+    color: #f1f5f9; /* Slate-100 (Bright White) */
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5); /* Subtle shadow for pop */
+}
+
+.home-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* 🟢 FIX 1: Allow the layout itself to scroll if needed */
+    overflow-y: auto; 
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Optional: Make the scrollbar look nice on laptops */
+.home-layout::-webkit-scrollbar {
+    width: 8px;
+}
+.home-layout::-webkit-scrollbar-track {
+    background: #0f172a; 
+}
+.home-layout::-webkit-scrollbar-thumb {
+    background: #334155; 
+    border-radius: 4px;
+}
+.home-layout::-webkit-scrollbar-thumb:hover {
+    background: #475569; 
+}
+
+/* 🟢 SMART COLOR ADAPTATION (Optional) */
+/* If you ever switch to a light theme, this handles it automatically */
+@media (prefers-color-scheme: light) {
+    /* Only apply dark text if the BACKGROUND actually flips to light */
+    .App.light-mode {
+        color: #0f172a; 
     }
-};
+}
 
-// --- CONFIGURATION ---
-const SPACE_URL = "toecm/PureVersation"; 
-
-// 🟢 GLOBAL SINGLETON: Keeps one stable connection for all games
-let sharedClient = null;
-const getClient = async () => {
-    if (!sharedClient) {
-        sharedClient = await Client.connect(SPACE_URL);
+/* 🟢 DESKTOP/TABLET TWEAKS */
+@media (min-width: 768px) {
+    .App {
+        max-width: var(--app-max-width); /* Lock width on large screens */
+        height: 95vh; /* Slight gap on top/bottom for aesthetic */
+        max-height: 900px;
+        border-radius: 20px; /* Rounded corners like a phone */
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5); /* Nice shadow */
+        border: 1px solid #334155;
     }
-    return sharedClient;
-};
-
-const FALLBACK_DIALECTS = [
-  "African American Vernacular English", "American English", "British English", "Gullah Creole", "Indian English", "Indonesian English", "Jamaican Patois", "Korean English", "Malaysian English", "Nigerian English", "Nigerian Pidgin English", "South African English",
-  "+ Add New Dialect"
-];
-
-const TONES = ["Neutral / Conversational", "Casual / Slang", "Formal / Professional", "Proverb / Idiom"];
-const TOPIC_SUGGESTIONS = ["Traffic", "Food", "Weather", "Family", "Work", "Politics", "Football", "Music", "Money", "Dreams"];
-
-const STARTER_QUESTIONS = [
-    "What is the best meal you've ever had?",
-    "Cats or Dogs? Explain why.",
-    "If you could fly, where would you go first?",
-    "What is your favorite time of day?",
-    "Tell me about a movie you watched recently.",
-    "What is your favorite season and why?",
-    "If you had a free hour right now, what would you do?"
-];
-
-const NEW_GREETINGS = ["Hello!", "Hi there!", "Greetings!", "What's up?", "How far?", "Welcome!"];
-const RETURNING_GREETINGS = ["Welcome back!", "Good to see you again!", "Ready for another round?"];
-const PRIVACY_STATEMENTS = [
-    "By speaking your truth, you help AI hear everyone's unique voice.",
-    "Every clip you save helps make your dialect a global standard.",
-    "Speak your mind. We are making your voice the new normal."
-];
-
-const getDoodleUrl = (k) => `https://loremflickr.com/400/200/${k},sketch/all?random=${Date.now()}`;
-const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all?random=${Date.now()}`;
-const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-// ==========================================
-// 🟢 FIX 1: ETHICAL AI CONSENT SCREEN (Expanded with Tokenomics & Slashing)
-// ==========================================
-function ConsentScreen({ onConsent }) {
-    return (
-        <div className="setup-screen" style={{ textAlign: 'center', padding: '15px', overflowY: 'auto' }}>
-            <div className="icon-large" style={{ fontSize: '50px', marginTop: '380px' }}>⚖️</div>
-            <h2 style={{ color: '#38bdf8', letterSpacing: '1px', fontSize: '20px' }}>ETHICAL AI CONSENT</h2>
-            
-            <div style={{ 
-                textAlign: 'left', fontSize: '12px', lineHeight: '1.5', 
-                background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '12px', 
-                border: '1px solid #334155', marginBottom: '20px', color: '#cbd5e1' 
-            }}>
-                <p style={{ marginTop: 0, color: '#f8fafc', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>
-                    Welcome to the PureVersation Research Registry.
-                </p>
-                <p style={{ textAlign: 'center', marginBottom: '15px' }}>Before proceeding, please acknowledge our rules and mechanics:</p>
-                
-                <ul style={{ paddingLeft: '15px', marginBottom: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <li>
-                        <strong style={{color: '#34d399'}}>Voluntary & Purpose-Driven:</strong> Participation is entirely voluntary. Though designed as a game, your input directly combats WEIRD (Western, Educated, Industrialized, Rich, and Democratic) bias in AI data.
-                    </li>
-                    <li>
-                        <strong style={{color: '#facc15'}}>The Ultimate Goal:</strong> You are actively helping to train future Large Language Models (LLMs) that truly understand, respect, and globalize the English or Creole spoken by your specific community.
-                    </li>
-                    <li>
-                        <strong style={{color: '#a78bfa'}}>Earn Authority (Ranks):</strong> You earn Reputation XP for contributing and verifying data, permanently upgrading your on-chain rank: 
-                        <br/><span style={{opacity: 0.8, fontSize: '11px'}}>▶ Initiate (0 XP) ➔ Scout (100 XP) ➔ Linguist (300 XP) ➔ Archivist (800 XP) ➔ Oracle (1500+ XP)</span>
-                    </li>
-                    <li>
-                        <strong style={{color: '#38bdf8'}}>Rewards & Consensus:</strong> You earn <strong>+10 XP</strong> instantly for validating peer data. If an entry you submit reaches consensus (verified by peers/admin), you receive a massive <strong>+50 XP</strong> reward.
-                    </li>
-                    <li>
-                        <strong style={{color: '#ef4444'}}>Quality Control & Penalties:</strong> To protect the integrity of the data, a "Slashing" mechanism is enforced. If you submit spam, fake, or incorrect data that is rejected by peers or the Lab Admin, you will lose <strong>-10 XP</strong>, which can result in a rank demotion.
-                    </li>
-                    <li>
-                        <strong style={{color: '#f472b6'}}>Privacy & Provenance:</strong> You remain entirely anonymous. No personally identifiable information (PII) beyond your voice and dialect is stored. Approved data is cryptographically secured on the Purechain ledger.
-                    </li>
-                    <li>
-                        <strong style={{color: '#cbd5e1'}}>Your Data Rights:</strong> You maintain the absolute right to request the deletion of your data at any time via the Lab Admin using your unique Operator ID.
-                    </li>
-                </ul>
-            </div>
-            
-            <button className="cyber-button" onClick={onConsent} style={{ background: '#22c55e', padding: '15px', flexShrink: 0 }}>
-                I UNDERSTAND & CONSENT
-            </button>
-        </div>
-    );
 }
 
-// ==========================================
-// 📺 TUTORIAL MODAL
-// ==========================================
-function GameTutorial({ gameKey, onStart, onCancel }) {
-    const asset = GAME_ASSETS[gameKey];
-    const [isMuted, setIsMuted] = useState(true);
-
-    if (!asset) return null;
-
-    return (
-        <div className="tutorial-overlay" style={{
-            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-            background: 'rgba(15, 23, 42, 0.95)', zIndex: 1000,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(10px)'
-        }}>
-            <div className="tutorial-card" style={{
-                background: '#1e293b', padding: '20px', borderRadius: '20px',
-                border: `1px solid ${asset.color}`, maxWidth: '90%', width: '400px',
-                textAlign: 'center', boxShadow: `0 0 30px ${asset.color}40`
-            }}>
-                <h2 style={{color: asset.color, margin: '0 0 15px 0'}}>HOW TO PLAY</h2>
-                
-                <div 
-                    style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '10px', border: '1px solid #334155', background: '#000', position: 'relative', cursor: 'pointer' }}
-                    onClick={() => setIsMuted(!isMuted)}
-                >
-                    <video src={asset.video} autoPlay loop muted={isMuted} playsInline style={{width: '100%', height: '200px', objectFit: 'cover'}} />
-                    {isMuted && (
-                        <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.6)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff' }}>
-                            🔇 Tap to Unmute
-                        </div>
-                    )}
-                </div>
-
-                <div style={{textAlign: 'left', marginBottom: '25px', color: '#cbd5e1', fontSize: '14px', marginTop: '15px'}}>
-                    {asset.instructions.map((step, i) => (
-                        <p key={i} style={{marginBottom: '8px'}}>✅ {step}</p>
-                    ))}
-                </div>
-                <div style={{display: 'flex', gap: '10px'}}>
-                    <button onClick={onCancel} className="cancel-btn" style={{flex: 1, padding: '15px'}}>BACK</button>
-                    <button onClick={onStart} className="cyber-button" style={{flex: 1, background: asset.color, color: '#000', fontWeight: 'bold'}}>START GAME 🚀</button>
-                </div>
-            </div>
-        </div>
-    );
+/* Ensure Game Layouts Fill Space */
+.game-layout {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
 }
 
-// ==========================================
-// 🛡️ SECURE FEEDBACK MODAL
-// ==========================================
-function FeedbackModal({ onClose }) {
-    const [opId, setOpId] = useState("");
-    const [feedback, setFeedback] = useState("");
-    const [image, setImage] = useState(null);
-    const [status, setStatus] = useState("");
-
-    const handleSubmit = async () => {
-        if (!feedback) { setStatus("⚠️ Please enter feedback text."); return; }
-        setStatus("⏳ Encrypting and Sending...");
-        
-        try {
-            const app = await Client.connect(SPACE_URL);
-            let wrappedImage = null;
-            if (image) {
-                const imgFile = new File([image], `bug_${Date.now()}.png`, { type: image.type });
-                wrappedImage = handle_file(imgFile);
-            }
-            
-            await app.predict("/submit_feedback", [
-                opId || "Anonymous", 
-                feedback, 
-                wrappedImage
-            ]);
-            
-            setStatus("✅ Report securely submitted.");
-            setTimeout(onClose, 2000);
-        } catch (e) {
-            setStatus("❌ Failed to send. Network error.");
-        }
-    };
-
-    return (
-        <div className="tutorial-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.95)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-            <div className="mission-card" style={{ background: '#1e293b', padding: '20px', borderRadius: '15px', border: '1px solid #a78bfa', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', height: 'auto' }}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                    <h3 style={{color: '#a78bfa', margin: 0}}>SECURE FEEDBACK</h3>
-                    <button onClick={onClose} style={{background: 'transparent', border: 'none', color: '#ef4444', fontSize: '18px', cursor: 'pointer'}}>✖</button>
-                </div>
-                
-                <div style={{background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', borderLeft: '3px solid #38bdf8', marginBottom: '15px', fontSize: '12px', color: '#cbd5e1'}}>
-                    <strong>💡 PRO TIP:</strong> Tap and hold your <span style={{color: '#38bdf8'}}>OPERATOR ID</span> at the very bottom of the main screen to copy it, then paste it below to help us track your specific session bugs.
-                </div>
-
-                <label style={{fontSize: '11px', color: '#94a3b8', marginBottom: '5px'}}>OPERATOR ID (Optional)</label>
-                <input className="cyber-input" placeholder="Paste ID here..." value={opId} onChange={e => setOpId(e.target.value)} style={{marginBottom: '15px'}} />
-
-                <label style={{fontSize: '11px', color: '#94a3b8', marginBottom: '5px'}}>ISSUE OR SUGGESTION</label>
-                <textarea value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Describe what happened..." style={{marginBottom: '15px', height: '80px', width: '90%'}} />
-
-                <label style={{fontSize: '11px', color: '#94a3b8', marginBottom: '5px'}}>UPLOAD SCREENSHOT (Proof)</label>
-                <input type="file" accept="image/*" onChange={e => setImage(e.target.files[0])} style={{marginBottom: '20px', color: '#94a3b8', fontSize: '12px'}} />
-
-                <button className="cyber-button" onClick={handleSubmit} disabled={status.includes("⏳") || status.includes("✅")} style={{background: '#a78bfa', color: '#000'}}>
-                    {status || "SEND SECURE REPORT"}
-                </button>
-            </div>
-        </div>
-    );
+/* 2. Main Container */
+.cyber-container {
+  width: 90%;
+  max-width: 400px; 
+  background: rgba(15, 23, 42, 0.85); /* Darker for better contrast */
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 15px; 
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px; 
+  position: relative;
+  overflow: hidden;
 }
 
-// ==========================================
-// 🚀 MAIN APP COMPONENT
-// ==========================================
-function App() {
-  const [hasConsented, setHasConsented] = useState(() => localStorage.getItem("pureversation_consented") === "true");
+/* 3. Header */
+.hud-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.xp-badge { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 5px 10px; border-radius: 8px; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.9em; }
+.status-badge { font-family: monospace; color: #94a3b8; font-size: 0.8em; letter-spacing: 1px; }
+
+/* 4. Mission Card - UPDATED FOR DOODLE */
+.mission-card {
+  position: relative;
+  background: #f8fafc; /* Paper-like background for the sketch */
+  border: 2px solid #cbd5e1;
+  padding: 0; /* Remove padding to let image fill */
+  border-radius: 12px;
+  overflow: hidden;
+  height: 80px; /* Fixed height for consistency */
+  display: flex;
+  align-items: center;
+}
+
+/* 🟢 The "Doodle" Layer */
+.doodle-bg {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.4; /* Faint sketch look */
+  filter: grayscale(100%) contrast(150%) brightness(1.1); /* Make it look like a pencil sketch */
+}
+
+/* 🟢 The Text Overlay */
+.mission-content-overlay {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 15px;
+  width: 100%;
+  background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
+}
+
+.mission-icon { font-size: 28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
+.mission-content-overlay h3 { margin: 0; font-size: 10px; color: #64748b; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 800; }
+.mission-content-overlay p { margin: 2px 0 0 0; font-size: 14px; font-weight: 700; color: #1e293b; line-height: 1.1; }
+/* 5. Inputs & Controls */
+.control-panel { display: flex; flex-direction: column; gap: 8px; }
+
+.dialect-selector { text-align: center; }
+.dialect-selector label { display: block; font-size: 10px; color: #64748b; margin-bottom: 3px; letter-spacing: 1px; }
+select {
+  width: 100%; background: #0f172a; color: white; border: 1px solid #334155;
+  padding: 8px; border-radius: 8px; font-family: inherit; font-size: 14px; text-align: center;
+}
+
+/* 6. Record Button - COMPACT SIZE FIX */
+.record-btn {
+  width: 100%;
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 12px; /* Reduced from 20px+ */
+  border-radius: 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px; /* Reduced font size */
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  transition: all 0.2s ease;
+  margin-top: 5px;
+}
+.record-btn:active { transform: scale(0.98); }
+.record-btn.pulsing { animation: pulseRed 1.5s infinite; background: #dc2626; }
+@keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
+/* 7. Action Button (Analyze/Mint) */
+.cyber-button {
+  width: 100%;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white; border: none;
+  padding: 12px; /* Reduced */
+  border-radius: 12px;
+  font-family: inherit; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+  cursor: pointer; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+}
+.cyber-button:disabled { background: #334155; box-shadow: none; opacity: 0.5; cursor: not-allowed; }
+
+/* 8. Audio Players & Textareas */
+.audio-preview audio { width: 100%; height: 32px; margin-top: 5px; border-radius: 5px; } /* Slim player */
+.input-group label { font-size: 10px; color: #94a3b8; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+textarea { 
+  width: 95%; background: rgba(0,0,0,0.3); border: 1px solid #334155; 
+  color: white; padding: 8px; border-radius: 8px; font-family: inherit; 
+  resize: none; height: 40px; font-size: 13px; /* Smaller text inputs */
+}
+
+/* 9. Footer */
+.id-footer {
+  margin-top: 5px; text-align: center; font-family: monospace; color: #475569; font-size: 0.75em;
+  padding: 8px; border-top: 1px solid rgba(255,255,255,0.05); transition: color 0.3s;
+}
+.id-footer:hover { color: #94a3b8; }
+.pulse-active { color: #34d399 !important; text-shadow: 0 0 8px rgba(52, 211, 153, 0.6); }
+
+/* Review Mode Specifics */
+.action-row { display: flex; gap: 10px; margin-top: 5px; }
+.cancel-btn { background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 8px; padding: 0 20px; cursor: pointer; font-family: inherit; font-weight: 600; }
+
+/* --- VISION MODE (Clean Layout) --- */
+.vision-mode-container {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.vision-image {
+    width: 100%;
+    height: 180px; /* Big clear image */
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid #334155;
+}
+
+.vision-text-block {
+    padding: 15px;
+    text-align: center;
+}
+
+.vision-text-block h3 {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #94a3b8;
+}
+
+.vision-text-block .subtext {
+    margin: 2px 0 5px 0;
+    font-size: 11px;
+    color: #38bdf8;
+    font-family: 'Rajdhani', sans-serif;
+}
+
+.vision-text-block .main-text {
+    margin: 0;
+    font-size: 15px;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* --- NEW HOME MENU STYLES --- */
+
+/* The "Select Game Mode" Instruction */
+.instruction-zone {
+    text-align: center;
+    margin: 20px 0 15px 0;
+    opacity: 0.8;
+}
+
+.instruction-zone p {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+.instruction-line {
+    width: 40px;
+    height: 2px;
+    background: #334155;
+    margin: 8px auto 0 auto;
+    border-radius: 2px;
+}
+
+/* The Big Icons */
+.icon-large {
+    font-size: 48px; /* Big Icon */
+    margin-bottom: 10px;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
+}
+
+/* Update Menu Card for centered layout */
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 25px 15px; /* Taller card */
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid #334155;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.menu-card h3 {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #e2e8f0;
+    margin-top: 5px;
+}
+
+/* Hover Effects */
+.menu-card:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: #38bdf8;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+}
+
+.menu-card:hover .icon-large {
+    transform: scale(1.2) rotate(-5deg); /* Pop effect */
+    filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.4));
+}
+
+/* Highlight (Speed Chat) specific glow */
+.menu-card.highlight:hover {
+    border-color: #34d399;
+}
+.menu-card.highlight:hover .icon-large {
+    filter: drop-shadow(0 0 20px rgba(52, 211, 153, 0.4));
+}
+
+/* --- GAME 4: LISTENER MODE --- */
+
+.listener-mode {
+    background: #0f172a;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;       /* 🟢 Force full screen height */
+    overflow: hidden;    /* 🟢 Prevent outer page scroll */
+}
+
+.listener-header {
+    flex-shrink: 0; /* Don't shrink */
+    padding: 10px 15px; /* Reduced vertical padding */
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #22c55e;
+}
+
+.chat-log {
+    flex: 1;                 /* 🟢 Take up all available space between Header and Controls */
+    overflow-y: auto;        /* 🟢 Activate scrollbar ONLY here */    
+    padding: 10px 20px; /* Reduced top padding */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    
+    /* Scrollbar Styling (Optional but nice) */
+    scrollbar-width: thin;
+    scrollbar-color: #38bdf8 transparent;
+
+
+    /* 🟢 NEW: Ensures smooth scrolling physics */
+    scroll-behavior: smooth;
+}
+
+/* Optional: Tweaks to make the input bar feel more integrated */
+.listener-controls {
+    flex-shrink: 0; /* Don't shrink */
+    padding: 20px;
+    background: #1e293b;
+    border-top: 1px solid #334155;    /* 🟢 NEW: subtle shadow to separate input from chat */
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2); 
+    z-index: 10;
+}
+
+/* 2. The Flexible Bubbles */
+.chat-bubble {
+    max-width: 80%;          /* 🟢 Stop at 80% of screen width */
+    width: fit-content;      /* 🟢 Wrap tightly around short text */
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.5;
+    
+    /* 🟢 CRITICAL: Force long text to wrap onto new lines */
+    word-wrap: break-word;   
+    overflow-wrap: break-word;
+    
+    animation: popIn 0.3s ease;
+}
+
+/* AI Bubble (Left) */
+.chat-bubble.ai {
+    align-self: flex-start;
+    background: #1e293b;
+    border-top-left-radius: 2px;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+}
+
+/* User Bubble (Right) */
+.chat-bubble.user {
+    align-self: flex-end;
+    background: #0ea5e9;
+    border-top-right-radius: 2px;
+    color: white;
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.2);
+}
+
+/* 3. The Input Area (Fixed at Bottom) */
+.listener-controls {
+    flex-shrink: 0;          /* 🟢 Never shrink this area */
+    padding: 20px;
+    background: #1e293b;
+    border-top: 1px solid #334155;
+    z-index: 10;
+}
+
+/* Verify Card Style */
+.verify-card {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #38bdf8;
+}
+
+.verify-row {
+    margin-bottom: 10px;
+}
+
+.verify-row label {
+    font-size: 10px;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.verify-row input {
+    width: 100%;
+    background: #1e293b;
+    border: 1px solid #475569;
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.ai-text {
+    color: #34d399; /* Green text for AI clarification */
+    font-style: italic;
+}
+
+.verify-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.confirm-btn {
+    flex: 1;
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+.reject-btn {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- SETUP SCREEN STYLES --- */
+
+.setup-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    background: #0f172a;
+    animation: fadeIn 0.5s ease;
+}
+
+.setup-row {
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 20px;
+}
+
+.setup-row label {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.setup-row select {
+    width: 100%;
+    padding: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: white;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+}
+
+.setup-row input[type="range"] {
+    width: 100%;
+    accent-color: #38bdf8;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Timer Animation */
+.timer {
+  position: absolute;
+  top: -30px;
+  right: 10px;
+  color: #ef4444; /* Red for urgency */
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  animation: pulse 1s infinite;
+}
+
+.countdown-timer {
+  font-size: 40px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 10px;
+  text-shadow: 0 0 10px currentColor;
+  font-family: 'Courier New', monospace;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* ==========================================
+   🏆 ETHICAL IMPACT BADGE ANIMATION
+   ========================================== */
+.impact-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  background: linear-gradient(45deg, #facc15, #fb923c); /* Bright Gold to Deep Orange */
+  color: #000;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  border: 1px solid #fffbeb;
+  text-transform: uppercase;
   
-  const [showFeedback, setShowFeedback] = useState(false);
-  
-  const [activeGame, setActiveGame] = useState("HOME"); 
-  const [cloudStatus, setCloudStatus] = useState("⚪ CHECKING SYNC...");
-  const [userKey, setUserKey] = useState(null);
-  const [xp, setXP] = useState(() => parseInt(localStorage.getItem("pureconvo_xp")) || 0);
-  
-  useEffect(() => {
-      localStorage.setItem("pureconvo_xp", xp);
-  }, [xp]);
+  /* Trigger the custom pulse animation */
+  animation: gentle-impact-pulse 2s infinite ease-in-out;
+}
 
-  const getRank = (points) => {
-      if (points < 100) return "Initiate";
-      if (points < 300) return "Scout";
-      if (points < 800) return "Linguist";
-      if (points < 1500) return "Archivist";
-      return "Oracle";
-  };
-  
-  const [address, setAddress] = useState("");
-  const [dialects, setDialects] = useState(FALLBACK_DIALECTS);
-  const [greeting, setGreeting] = useState(""); 
-  const [isPulsing, setIsPulsing] = useState(false);
+/* The Keyframes for the Pulse */
+@keyframes gentle-impact-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+  }
+  50% {
+    transform: scale(1.05); /* Gently swells by 5% */
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.9), 0 0 35px rgba(251, 146, 60, 0.6); /* Aura expands and intensifies */
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+  }
+}
 
-  useEffect(() => {
-      const openFb = () => setShowFeedback(true);
-      window.addEventListener('open-feedback', openFb);
-      return () => window.removeEventListener('open-feedback', openFb);
-  }, []);
+/* ==========================================
+   📱 UNIVERSAL RESPONSIVE LAYOUT FIX
+   ========================================== */
 
-  useEffect(() => {
-    let sessionID = localStorage.getItem("pureversation_session_id");
-    if (!sessionID) {
-        sessionID = `session_${uuidv4().split('-')[0]}_${Date.now().toString().slice(-4)}`;
-        localStorage.setItem("pureversation_session_id", sessionID);
+/* 1. Base App: Lock to Dynamic Viewport Height */
+html, body, #root, .App {
+    height: 100%;
+    /* 'dvh' dynamically adjusts when mobile browser toolbars appear/hide */
+    min-height: 100dvh; 
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent the whole page from scrolling */
+    background-color: #0f172a; 
+}
+
+/* 2. Main Container: Flexbox distributes space natively */
+.cyber-container {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh; 
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    /* Reserve space at the bottom so the footer never overlaps game buttons */
+    padding-bottom: 75px; 
+}
+
+/* 3. Game Layouts: Take up remaining space and scroll internally if needed */
+.home-layout, .game-layout, .listener-mode, .setup-screen {
+    flex: 1; /* Grow to fill all available space between header and footer */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Only scroll the inside content, never the whole page */
+    padding: 15px;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+/* 4. Footer: Pin to the bottom of the viewport safely */
+.id-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    border-top: 1px solid #334155;
+    /* env() ensures it doesn't get covered by the iPhone home indicator bar */
+    padding-bottom: env(safe-area-inset-bottom); 
+}
+
+/* 5. Mobile-Specific Tweaks (Phones & Tablets) */
+@media (max-width: 768px) {
+    .menu-grid {
+        grid-template-columns: 1fr; /* Stack menu cards vertically on phones */
+        gap: 15px;
     }
-    setUserKey(sessionID); 
-
-    let opAddr = localStorage.getItem("pureversation_operator_addr");
-    if (!opAddr) {
-        const validHex = (uuidv4().replace(/-/g, "") + uuidv4().replace(/-/g, "")).slice(0, 40);
-        opAddr = "0x" + validHex;
-        localStorage.setItem("pureversation_operator_addr", opAddr);
-    }
-    setAddress(opAddr);
-
-    const greetList = localStorage.getItem("pureversation_session_id") ? RETURNING_GREETINGS : NEW_GREETINGS;
-    setGreeting(`${getRandom(greetList)} ${getRandom(PRIVACY_STATEMENTS)}`);
-
-    const checkSync = async () => {
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/check_cloud_sync");
-            setCloudStatus(res.data[0]); 
-        } catch (e) { setCloudStatus("🔴 SYNC OFFLINE"); }
-    };
-
-    const loadDialects = async () => {
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/api_get_dialects"); 
-            
-            console.log("📡 RAW DIALECT DATA RECEIVED:", res.data[0]);
-            
-            const rawData = res.data[0];
-            let parsedArray = [];
-            
-            if (typeof rawData === "string") {
-                parsedArray = JSON.parse(rawData);
-            } else if (Array.isArray(rawData)) {
-                parsedArray = rawData;
-            } else if (rawData && rawData.dialects) {
-                parsedArray = rawData.dialects;
-            }
-
-            if (parsedArray && Array.isArray(parsedArray) && parsedArray.length > 0) {
-                const cleanArray = parsedArray.filter(d => d !== "+ Add New Dialect" && typeof d === 'string');
-                cleanArray.sort((a, b) => a.localeCompare(b));
-                setDialects([...new Set(cleanArray), "+ Add New Dialect"]);
-            } else {
-                throw new Error("Parsed data was empty or not an array");
-            }
-        } catch (e) { 
-            console.error("⚠️ Failed to sync database dialects, using fallbacks:", e);
-            setDialects(FALLBACK_DIALECTS); 
-        }
-    };
-
-    // 🟢 FIX: Run them one after the other so Hugging Face doesn't block the simultaneous connection requests
-    const initializeApp = async () => {
-        await checkSync();
-        await loadDialects();
-    };
-
-    initializeApp();
-
-    const syncInterval = setInterval(checkSync, 300000); 
-    return () => clearInterval(syncInterval);
-  }, []);
-
-  const handleIDClick = () => {
-      navigator.clipboard.writeText(address);
-      setIsPulsing(true);
-      setTimeout(() => setIsPulsing(false), 600);
-  };
-
-  return (
-    <div className="App">
-      <div className="cyber-container">
-        
-        {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
-        
-        {!hasConsented ? (
-            <ConsentScreen onConsent={() => { setHasConsented(true); localStorage.setItem("pureversation_consented", "true"); }} />
-        ) : (
-            <>
-                <div className="hud-header">
-                    <div className="xp-badge" style={{display: 'flex', gap: '5px', alignItems: 'center'}}>
-                        <span>✨ {xp} XP</span>
-                        <span style={{opacity: 0.5}}>|</span>
-                        <span style={{color: '#a78bfa', fontWeight: '900'}}>{getRank(xp)}</span>
-                    </div>
-                    <div className="status-badge" style={{marginLeft: '10px', background: 'rgba(0,0,0,0.5)'}}>☁️ {cloudStatus}</div>
-                    <div className="status-badge" style={{marginLeft: 'auto'}}>MODE: {activeGame}</div>
-                </div>
-
-                {activeGame === "HOME" && <HomeMenu onSelect={setActiveGame} greeting={greeting} />}
-
-		{activeGame === "CONVO" && (
-                    <GameHumanConvo 
-                        userKey={userKey} operator={address} dialects={dialects} 
-                        onBack={() => setActiveGame("HOME")} 
-                    />
-                )}
-
-		{activeGame === "BRIDGE" && (
-                    <GameConvoBridge 
-                        userKey={userKey} dialects={dialects} 
-                        onBack={() => setActiveGame("HOME")} 
-                    />
-                )}
-                
-                {activeGame === "ARCHIVIST" && (
-                    <GameArchivist 
-                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
-                        onBack={() => setActiveGame("HOME")} greeting={greeting} 
-                    />
-                )}
-
-                {activeGame === "SPEED" && (
-                    <GameSpeedChat 
-                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
-                        onBack={() => setActiveGame("HOME")} greeting={greeting} 
-                    />
-                )}
-
-                {activeGame === "VISION" && (
-                    <GameVisionQuest 
-                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
-                        onBack={() => setActiveGame("HOME")} greeting={greeting} 
-                    />
-                )}
-
-                {activeGame === "LISTENER" && (
-                    <GameActiveListener 
-                        userKey={userKey} setXP={setXP} dialects={dialects} setDialects={setDialects} operator={address}
-                        onBack={() => setActiveGame("HOME")} 
-                    />
-                )}
-
-                <div 
-                    className={`id-footer ${isPulsing ? 'pulse-active' : ''}`} onClick={handleIDClick} title="Tap to Copy Operator ID"
-                    style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', marginTop: '10px', transition: 'all 0.3s ease' }}
-                >
-                    <div style={{fontWeight: 'bold', color: '#38bdf8'}}>OPERATOR: {address.slice(0,6)}...{address.slice(-4)}</div>
-                    <div style={{fontSize: '9px', opacity: 0.8, color: '#facc15', letterSpacing: '1px', marginTop: '-2px'}}>(Tap to Copy)</div>
-                    <div style={{fontSize: '10px', opacity: 0.6, letterSpacing: '1px', fontFamily: 'monospace', marginTop: '2px'}}>{userKey || "GENERATING..."}</div>
-                </div>
-            </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function HomeMenu({ onSelect, greeting }) {
-    const [selectedTutorial, setSelectedTutorial] = useState(null);
-    const handleGameClick = (gameKey) => setSelectedTutorial(gameKey);
-    const confirmStart = () => { onSelect(selectedTutorial); setSelectedTutorial(null); };
-
-    return (
-        <div className="home-layout">
-            {selectedTutorial && <GameTutorial gameKey={selectedTutorial} onStart={confirmStart} onCancel={() => setSelectedTutorial(null)} />}
-            <div className="welcome-banner"><p>{greeting}</p></div>
-            <div className="instruction-zone"><p>SELECT MISSION</p><div className="instruction-line"></div></div>
-            <div className="menu-grid" style={{paddingBottom: '40px'}}>
-		
-                <div className="menu-card" onClick={() => handleGameClick("LISTENER")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.LISTENER.image})`, backgroundSize: 'cover'}}>
-                    <div className="icon-large">👂</div><h3>THE LISTENER</h3><p>Active Conversation Mode</p>
-                </div>
-                <div className="menu-card" onClick={() => handleGameClick("ARCHIVIST")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.ARCHIVIST.image})`, backgroundSize: 'cover'}}>
-                    <div className="icon-large">📜</div><h3>THE ARCHIVIST</h3><p>Daily Journaling</p>
-                </div>
-                <div className="menu-card" onClick={() => handleGameClick("SPEED")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.SPEED.image})`, backgroundSize: 'cover'}}>
-                    <div className="icon-large">⚡</div><h3>SPEED CHAT</h3><p>Rapid Fire Questions</p>
-                </div>
-                <div className="menu-card" onClick={() => handleGameClick("VISION")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.VISION.image})`, backgroundSize: 'cover'}}>
-                    <div className="icon-large">👁️</div><h3>VISION QUEST</h3><p>Describe what you see</p>
-                </div>
-		<div className="menu-card" onClick={() => handleGameClick("BRIDGE")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.BRIDGE.image})`, backgroundSize: 'cover', border: '1px solid #22c55e'}}>
-                    <div className="icon-large">🌉</div><h3 style={{color: '#22c55e'}}>CONVO BRIDGE</h3><p>Live 2-Player Translation</p>
-                </div>
-		<div className="menu-card" onClick={() => handleGameClick("CONVO")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.CONVO.image})`, backgroundSize: 'cover', border: '1px solid #f97316'}}>
-            <div className="icon-large">📡</div><h3 style={{color: '#f97316'}}>HUMAN CONVO</h3><p>Remote 2-Device Chat</p>
-        </div>
-            </div>
-        </div>
-    );
-}
-
-// ==========================================
-// 📜 GAME 1: THE ARCHIVIST 
-// ==========================================
-function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
-    const [mission, setMission] = useState({ text: greeting, subtext: "Retrieving Archive Topic...", image: getDoodleUrl("abstract") });
-    const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
     
-    const loadNextTopic = async () => {
-        const topics = ["Daily Life", "Food", "Weather", "Childhood", "Hobbies", "Weekend Plans"];
-        const randomTopic = getRandom(topics);
-        
-        setMission(prev => ({ ...prev, text: "I appreciate you!", subtext: "Thinking of what to chat about...", image: getDoodleUrl("success") }));
-
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/generate_mission", [randomTopic]);
-            let data;
-            try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
-            setTimeout(() => {
-                setMission({ text: data.text, subtext: "Journal Entry • Keep it short (1 sentence)", image: getDoodleUrl(randomTopic) });
-            }, 1100);
-        } catch { 
-            setMission({ text: `Tell me a short sentence about your ${randomTopic.toLowerCase()}.`, subtext: "Offline Mode", image: getDoodleUrl("coffee") }); 
-        }
-    };
-
-    useEffect(() => { loadNextTopic(); }, []);
-
-    return (
-        <SharedGameLayout
-            title="ARCHIVE ENTRY" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} setXP={setXP} 
-            onBack={onBack} onReset={() => { if(window.confirm("Skip this topic?")) loadNextTopic(); }}
-            onNext={loadNextTopic} sourceTag="Game: Archivist" operator={operator}
-        />
-    );
-}
-
-// ==========================================
-// ⚡ GAME 2: SPEED CHAT 
-// ==========================================
-function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
-    const [gameStage, setGameStage] = useState(() => localStorage.getItem(`speed_stage_${userKey}`) || "onboarding"); 
-    const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
-    const [currentTopic, setCurrentTopic] = useState(""); // 🟢 NEW: Tracks what they are currently talking about
-    const [customTopicInput, setCustomTopicInput] = useState(""); // 🟢 NEW: Tracks what they type
-    const [loading, setLoading] = useState(false);
-    const clientRef = useRef(null);
-
-    const [mission, setMission] = useState(() => {
-        const savedMission = localStorage.getItem(`speed_mission_${userKey}`);
-        if (savedMission) { try { return JSON.parse(savedMission); } catch (e) {} }
-        return { text: greeting, subtext: "I'm thinking of what to ask you...", image: getDoodleUrl("network") };
-    });
-
-    const [timeLeft, setTimeLeft] = useState(10);
-    const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
-    
-    const timerRef = useRef(null);
-    const stopRecordingRef = useRef(stopRecording); 
-
-    useEffect(() => {
-        if (status === "recording") {
-            setTimeLeft(10);
-            timerRef.current = setInterval(() => {
-                setTimeLeft(prevTime => {
-                    if (prevTime <= 1) { 
-                        clearInterval(timerRef.current); 
-                        // 🟢 FIX: 500ms invisible buffer to prevent audio clipping
-                        setTimeout(() => {
-                            stopRecordingRef.current(); 
-                        }, 500);
-                        return 0; 
-                    }
-                    return prevTime - 1;
-                });
-            }, 1000);
-        } else { 
-            clearInterval(timerRef.current); 
-            setTimeLeft(10);
-        }
-        return () => clearInterval(timerRef.current);
-    }, [status]);
-
-    const fetchMission = async (topic) => {
-        setLoading(true);
-        setMission(prev => ({ ...prev, subtext: `Establishing Neural Link for: ${topic}...` }));
-        try {
-            // 🟢 FIX: Directly connect to the cloud space to ensure it never fails on the first load
-            const app = await Client.connect(SPACE_URL);
-            
-            // 🟢 FIX 1: Increased timeout from 4.5s to 8s to allow the LLM time to generate
-            const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
-            
-            // 🟢 FIX 2: Clearer prompt instructions for the AI
-            const prompt = `Topic: ${topic}. Ask a short, engaging 1-sentence question about this topic for a player named ${nickname}.`;
-            const apiPromise = app.predict("/generate_mission", [prompt]);
-            
-            const res = await Promise.race([apiPromise, timeoutPromise]);
-            
-            let data;
-            try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
-            
-            // Clean up any stray quotation marks the AI might add
-            let cleanText = typeof data.text === 'string' ? data.text.replace(/^["']|["']$/g, '') : data.text;
-            
-            setMission({ text: cleanText, subtext: `Target: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
-            setGameStage("mission");
-        } catch (e) { 
-            // 🟢 FIX 3: Smart contextual fallback that actually makes sense!
-            let fallbackText = "";
-            
-            if (topic === "General") {
-                // If the topic is General, grab a random human-sounding question
-                const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
-                fallbackText = `Hey ${nickname}, here's a random one: ${randomStarter}`;
-            } else {
-                // If it's a specific topic, use it in the sentence
-                fallbackText = `Hey ${nickname}, What do you like about ${topic.toLowerCase()} the most?`;
-            }
-            
-            setMission({ text: fallbackText, subtext: `Local Backup: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) }); 
-            setGameStage("mission");
-        } finally { setLoading(false); }
-    };
-
-    // 🟢 FIX: Start round with their custom topic, or default to "General"
-    const startFirstRound = () => { 
-        if(nickname) { 
-            localStorage.setItem("pure_nickname", nickname); 
-            const startingTopic = customTopicInput.trim() || "General";
-            setCurrentTopic(startingTopic);
-            setCustomTopicInput(""); // Clear the input
-            fetchMission(startingTopic); 
-        } 
-    };
-
-    // 🟢 FIX: Reusable handler for clicking OR typing a topic
-    const handleTopicSelection = (topic) => {
-        const selected = topic.trim() || "General";
-        setCurrentTopic(selected);
-        setCustomTopicInput(""); // Clear the input
-        fetchMission(selected);
-    };
-
-    // 🟢 NEW: Instead of going to the menu, we generate a contextual follow-up question
-    const handleNextRound = (userUtterance, userClarification) => {
-        const lastAnswer = userClarification || userUtterance || "something interesting";
-        fetchFollowUp(currentTopic, lastAnswer);
-    };
-
-    const fetchFollowUp = async (topic, lastAnswer) => {
-        setLoading(true);
-        setMission(prev => ({ ...prev, subtext: `Analyzing response...` }));
-        try {
-            const app = await Client.connect(SPACE_URL); // 🟢 FIX: Directly connect so the AI doesn't fail!
-            const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
-            
-            // 🟢 NEW: Tell Gemini exactly what the user just said so it can dig deeper
-            const prompt = `Topic: ${topic}. Player Name: ${nickname}. The player just answered a question by saying: "${lastAnswer}". Ask a short, engaging 1-sentence follow-up question asking WHY or asking for more details.`;
-            
-            const apiPromise = app.predict("/generate_mission", [prompt]);
-            const res = await Promise.race([apiPromise, timeoutPromise]);
-            
-            let data;
-            try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
-            let cleanText = typeof data.text === 'string' ? data.text.replace(/^["']|["']$/g, '') : data.text;
-            
-            setMission({ text: cleanText, subtext: `Follow-up: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
-        } catch (e) {
-            setMission({ text: `That's interesting, ${nickname}! Tell me more about why you feel that way.`, subtext: `Local Backup: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
-        } finally { setLoading(false); }
-    };
-    
-    const handleReset = () => {
-        if (window.confirm("Reset Speed Chat identity?")) {
-            localStorage.removeItem("pure_nickname"); localStorage.removeItem(`speed_stage_${userKey}`);
-            setNickname(""); setGameStage("onboarding");
-        }
-    };
-
-    if (gameStage === "onboarding" && !localStorage.getItem("pure_nickname")) {
-        return (
-            <div className="game-layout">
-                <div className="mission-card" style={{display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', textAlign:'center', height: 'auto', padding: '20px'}}>
-                    <div className="icon-large">🕵️‍♂️</div>
-                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', fontSize: '18px' }}>WHAT'S YOUR NICKNAME?</h3>
-                    <input className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. Maverick" style={{margin:'10px 0 20px', textAlign:'center'}}/>
-                    
-                    {/* 🟢 NEW: Ask for the initial topic */}
-                    <h3 style={{ color: '#38bdf8', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', fontSize: '14px' }}>WHAT DO YOU WANT TO TALK ABOUT?</h3>
-                    <input className="cyber-input" value={customTopicInput} onChange={e => setCustomTopicInput(e.target.value)} placeholder="e.g. Tech, Food, Anime (Optional)" style={{margin:'10px 0 20px', textAlign:'center'}}/>
-
-                    <div className="action-row"><button className="cancel-btn" onClick={onBack}>BACK</button><button className="cyber-button" onClick={startFirstRound} disabled={!nickname}>START MISSION</button></div>
-                </div>
-            </div>
-        );
+    .mission-card {
+        flex-shrink: 0; /* Prevents the mission card from squashing */
     }
 
-    if (gameStage === "topic_select") {
-        return (
-            <div className="game-layout">
-                <div className="mission-card" style={{ height: 'auto', padding: '20px', display: 'block' }}>
-                    <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', marginBottom: '15px' }}>🔄 MISSION COMPLETE</h3>
-                    
-                    {/* 🟢 NEW: Option to continue the current conversation branch */}
-                    {currentTopic && (
-                        <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #facc15' }}>
-                            <p style={{ fontSize: '13px', color: '#facc15', fontWeight: 'bold', margin: '0 0 10px 0', textShadow: '1px 1px 2px #000' }}>Keep talking about "{currentTopic}"?</p>
-                            <button className="cyber-button" style={{ background: '#facc15', color: '#000', width: '100%', padding: '10px' }} onClick={() => handleTopicSelection(currentTopic)}>
-                                💬 CONTINUE TOPIC
-                            </button>
-                        </div>
-                    )}
-
-                    <p style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px' }}>Or switch to a new topic:</p>
-
-                    {/* 🟢 NEW: Input to type a completely custom topic */}
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-                         <input className="cyber-input" value={customTopicInput} onChange={e => setCustomTopicInput(e.target.value)} placeholder="Type custom topic..." style={{ flex: 1, margin: 0 }}/>
-                         <button className="cyber-button" onClick={() => handleTopicSelection(customTopicInput)} disabled={!customTopicInput.trim()} style={{ padding: '0 20px', background: '#38bdf8', color: '#000', margin: 0 }}>GO</button>
-                    </div>
-
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-                        {[...TOPIC_SUGGESTIONS].sort(() => 0.5 - Math.random()).slice(0, 4).map(t => (
-                            <button 
-                                key={t} 
-                                className="cyber-button" 
-                                style={{
-                                    background: 'rgba(15, 23, 42, 0.9)', 
-                                    border: '1px solid #f472b6', 
-                                    color: '#ffffff', 
-                                    fontWeight: 'bold',
-                                    textShadow: '1px 1px 2px #000',
-                                    fontSize: '12px',
-                                    padding: '12px'
-                                }} 
-                                onClick={() => handleTopicSelection(t)}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                    <button onClick={handleReset} style={{marginTop:'20px', background:'transparent', border:'1px dotted #ef4444', color:'#ef4444', padding:'10px', borderRadius:'8px', cursor:'pointer', fontSize:'12px', width:'100%'}}>🚫 RESET IDENTITY</button>
-                </div>
-            </div>
-        );
+    .control-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end; /* Pushes the record buttons to the bottom within thumb reach */
     }
-
-    if (loading) return <div className="game-layout"><div className="loading">GENERATING MISSION...</div></div>;
-
-    return (
-        <SharedGameLayout
-            title={`CHAT: ${nickname.toUpperCase()}`} mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} operator={operator} setXP={setXP} 
-            onBack={onBack} timer={timeLeft} onNext={handleNextRound} onReset={handleReset} onChangeTopic={() => setGameStage("topic_select")} sourceTag="Game: SpeedChat"
-        />
-    );
 }
 
-// ==========================================
-// 👁️ GAME 3: VISION QUEST 
-// ==========================================
-function GameVisionQuest({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
-    const [mission, setMission] = useState({ text: greeting, subtext: "Calibrating Optical Sensors...", image: getPhotoUrl("cyberpunk") });
-    const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = useReactMediaRecorder({ audio: true });
+/* ==========================================
+   🟢 NEW CSS FIXES (Consent, Captcha, Headers)
+   ========================================== */
 
-    const loadNewImage = () => {
-        const keywords = ["market", "street", "festival", "classroom", "kitchen"];
-        const k = getRandom(keywords);
-        setMission({ text: "In your own way, describe the first thing you see in this image.", subtext: `Target Sector: ${k.toUpperCase()}`, image: getPhotoUrl(k) });
-    };
-
-    useEffect(() => { setTimeout(loadNewImage, 2500); }, []);
-
-    return (
-        <SharedGameLayout
-            title="OBSERVATION DECK" mission={mission} recStatus={status} startRec={startRecording} stopRec={stopRecording}
-            mediaBlob={mediaBlobUrl} clearBlobUrl={clearBlobUrl} dialects={dialects} setDialects={setDialects} userKey={userKey} setXP={setXP} onBack={onBack}
-            onNext={loadNewImage} mode="vision" sourceTag="Game: Vision" operator={operator}
-        />
-    );
+.back-icon {
+    transition: color 0.2s ease;
 }
 
-// ==========================================
-// 👂 GAME 4: THE LISTENER 
-// ==========================================
-function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, operator }) {
-    const loadSavedData = () => { const saved = localStorage.getItem("echo_memory_" + userKey); return saved ? JSON.parse(saved) : null; };
-    const memory = loadSavedData();
-    const [setup, setSetup] = useState(memory ? memory.setup : { voiceIndex: 0, pitch: 1.0, rate: 1.0, userDialect: dialects[0] || "General" });
-    const [messages, setMessages] = useState(memory ? memory.messages : []);
-    const [nickname, setNickname] = useState(memory ? memory.nickname : "");
-    const [pronunciation, setPronunciation] = useState(memory ? memory.pronunciation : "");
-    const [phase, setPhase] = useState(memory ? "chat" : "setup"); 
-    const [voices, setVoices] = useState([]);
-    const [currentAudio, setCurrentAudio] = useState(null);
-    const [currentTranscript, setCurrentTranscript] = useState("");
-    const [currentClarification, setCurrentClarification] = useState(""); 
-    const [isEdited, setIsEdited] = useState(false);
-    const [showPhonetic, setShowPhonetic] = useState(false); 
-    const [isRegenerating, setIsRegenerating] = useState(false);
-    const chatEndRef = useRef(null);
-
-    const [customD, setCustomD] = useState("");
-    const [captcha, setCaptcha] = useState("");
-    const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
-
-    useEffect(() => {
-        if (setup.userDialect === "+ Add New Dialect") {
-            setCaptchaMath({
-                a: Math.floor(Math.random() * 10) + 1,
-                b: Math.floor(Math.random() * 10) + 1
-            });
-            setCaptcha("");
-        }
-    }, [setup.userDialect]);
-
-    useEffect(() => {
-        if (phase === "chat" || phase === "verify") {
-            const dataToSave = { setup, messages, nickname, pronunciation };
-            localStorage.setItem("echo_memory_" + userKey, JSON.stringify(dataToSave));
-        }
-    }, [messages, setup, nickname, pronunciation, phase, userKey]);
-
-    useEffect(() => {
-        const loadVoices = () => {
-            const all = window.speechSynthesis.getVoices();
-            if (all.length > 0) {
-                const englishVoices = all.filter(v => v.lang.startsWith("en"));
-                setVoices(englishVoices);
-                if (!memory) {
-                    const defaultVoice = englishVoices.findIndex(v => v.name.includes("Google US English") || v.name.includes("Samantha"));
-                    setSetup(prev => ({ ...prev, voiceIndex: defaultVoice !== -1 ? defaultVoice : 0 }));
-                }
-            }
-        };
-        loadVoices();
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-    }, []);
-
-    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, phase]);
-
-    const handleReset = () => { if (window.confirm("Start a new conversation?")) { localStorage.removeItem("echo_memory_" + userKey); setMessages([]); setNickname(""); setPronunciation(""); setPhase("setup"); } };
-
-    const speak = (text, forcePronunciation = null) => {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            let spokenText = text;
-            const targetName = nickname || currentTranscript;
-            const targetSound = forcePronunciation || pronunciation;
-            if (targetName && targetSound) { const regex = new RegExp(targetName, "gi"); spokenText = text.replace(regex, targetSound); }
-            const u = new SpeechSynthesisUtterance(spokenText);
-            const selectedVoice = voices[setup.voiceIndex];
-            if (selectedVoice) u.voice = selectedVoice;
-            u.pitch = setup.pitch; u.rate = setup.rate;
-            window.speechSynthesis.speak(u);
-        }
-    };
-
-    const startSession = () => { 
-        if (setup.userDialect === "+ Add New Dialect") {
-            if (!customD.trim()) { alert("Please type a new dialect name."); return; }
-            if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
-                alert(`Bot Check Failed! ${captchaMath.a} + ${captchaMath.b} = ${captchaMath.a + captchaMath.b}.`); 
-                return; 
-            }
-            setSetup({...setup, userDialect: customD});
-            
-            setDialects(prev => {
-                const clean = prev.filter(d => d !== "+ Add New Dialect");
-                return Array.from(new Set([customD, ...clean, "+ Add New Dialect"]));
-            });
-        }
-        const intro = "Hello, my name is Echo. What should I call you?"; 
-        setMessages([{ sender: 'ai', text: intro }]); setPhase("onboarding"); speak(intro); 
-    };
-
-    const handleRetry = () => { setPhase("chat"); setCurrentTranscript(""); setCurrentClarification(""); setIsEdited(false); };
-    
-    const handleRegenerateMeaning = async () => {
-        if (!currentTranscript.trim()) return;
-        setIsRegenerating(true);
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const d = setup.userDialect || "General";
-            const cRes = await app.predict("/generate_clarifications", [currentTranscript, d]);
-            let cText = cRes.data[0];
-            try { cText = JSON.parse(cText).clarification || cText; } catch {}
-            setCurrentClarification(cText); setIsRegenerating(false);
-        } catch (e) { setIsRegenerating(false); }
-    };
-
-    const handleSubmitName = () => {
-        if (!currentTranscript.trim()) return;
-        const name = currentTranscript.trim(); const sound = pronunciation.trim() || name;
-        setNickname(name); setPronunciation(sound);
-        const response = `Nice to meet you, ${name}. What would you like to talk about?`;
-        setMessages(p => [...p, { sender: 'user', text: name }, { sender: 'ai', text: response }]);
-        speak(response, sound); setCurrentTranscript(""); setPhase("chat");
-    };
-
-    const handleConfirm = async () => {
-        setMessages(p => [...p, { sender: 'user', text: currentTranscript, isAudio: !isEdited }]);
-        setPhase("responding"); 
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const d = setup.userDialect || "General";
-            const clarSource = isEdited ? "User/AI Hybrid" : "AI";
-            let wrappedAudio = null;
-            if (currentAudio) {
-                 const audioFile = new File([currentAudio], `echo_${Date.now()}.wav`, { type: "audio/wav" });
-                 wrappedAudio = handle_file(audioFile);
-            }
-            const finalOperatorId = operator || "0xUnknown";
-
-            await app.predict("/check_and_submit_logic", [
-                currentTranscript, d, "", currentClarification, "Conversational", "Chat", "Interactive Chat Session",
-                "Game: Listener", clarSource, finalOperatorId, wrappedAudio, false
-            ]);
-            
-            const prompt = `User said: "${currentTranscript}". Meaning: "${currentClarification}". You are Echo. Reply naturally with a short follow-up question.`;
-            const res = await app.predict("/generate_mission", [prompt]); 
-            let replyText = "";
-            const rawData = res.data[0];
-            if (typeof rawData === "string") { try { const parsed = JSON.parse(rawData); replyText = parsed.text || rawData; } catch { replyText = rawData; } }
-            else if (typeof rawData === "object" && rawData !== null) { replyText = rawData.text || JSON.stringify(rawData); } 
-            else { replyText = "I see. Tell me more."; }
-            replyText = String(replyText).replace(/^{"text":\s*"/, "").replace(/"}$/, "");
-            
-            setMessages(p => [...p, { sender: 'ai', text: replyText }]);
-            speak(replyText); setXP(x => x + 25);
-        } catch (e) {
-            const fallback = "I'm listening. Please continue.";
-            setMessages(p => [...p, { sender: 'ai', text: fallback }]); speak(fallback);
-        } finally { setPhase("chat"); setCurrentTranscript(""); setCurrentClarification(""); setIsEdited(false); }
-    };
-
-    const handleAudioStop = async (blobUrl, blob) => {
-        if (phase === "onboarding") {
-            setPhase("processing"); 
-            try {
-                const app = await Client.connect(SPACE_URL);
-                const d = setup.userDialect || "General";
-                const tRes = await app.predict("/transcribe_check", [blob, d]);
-                const text = tRes.data[0];
-                setCurrentTranscript(text); if(!pronunciation) setPronunciation(text); setPhase("onboarding"); 
-            } catch (e) { setPhase("onboarding"); }
-            return;
-        }
-        setPhase("processing"); setCurrentAudio(blob); setIsEdited(false); 
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const d = setup.userDialect || "General";
-            const tRes = await app.predict("/transcribe_check", [blob, d]);
-            const text = tRes.data[0];
-            setCurrentTranscript(text);
-            const cRes = await app.predict("/generate_clarifications", [text, d]);
-            let cText = cRes.data[0];
-            try { cText = JSON.parse(cText).clarification || cText; } catch {}
-            setCurrentClarification(cText); setPhase("verify");
-        } catch (e) { setMessages(p => [...p, { sender: 'ai', text: "I couldn't hear you. Try again?" }]); setPhase("chat"); }
-    };
-
-    const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({ audio: true, onStop: handleAudioStop });
-
-    return (
-        <div className="game-layout listener-mode">
-            <div className="listener-header" style={{display:'flex', alignItems:'center', gap:'10px', marginBottom: '15px'}}>
-                <button className="back-icon" onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px', padding:'0'}} title="Back to Menu">🏠←</button>
-                <div className={`status-dot ${status === "recording" ? "pulsing-red" : ""}`}></div>
-                <h3 style={{margin: 0, color: '#f8fafc', flex: 1}}>ECHO {nickname ? `| ${nickname.toUpperCase()}` : ""}</h3>
-                
-                {/* 🟢 FIX: Exact same Reset button styling as SharedGameLayout */}
-                <button onClick={handleReset} style={{background:'rgba(0,0,0,0.3)', border:'none', borderRadius:'50%', width:'40px', height:'30px', cursor:'pointer', fontSize:'16px', color:'#94a3b8', flexShrink: 0}} title="Reset Identity">🗑️</button>
-            </div>
-            {phase === "setup" ? (
-                <div className="setup-screen">
-                    <div className="icon-large">🎛️</div><h3>CONFIGURE ECHO</h3>
-                    <div className="setup-row"><label>YOUR DIALECT</label><select value={setup.userDialect} onChange={e => setSetup({...setup, userDialect: e.target.value})}>{dialects.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
-                    
-                    {setup.userDialect === "+ Add New Dialect" && (
-                        <div className="setup-row" style={{background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
-                            <input className="cyber-input" placeholder="New Dialect Name" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
-                            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-                                <span style={{fontSize: '11px', color: '#94a3b8'}}>Human Check: {captchaMath.a} + {captchaMath.b} =</span>
-                                <input className="cyber-input" style={{width: '50px', textAlign: 'center'}} type="number" value={captcha} onChange={e => setCaptcha(e.target.value)} />
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="setup-row"><label>AI VOICE</label><select value={setup.voiceIndex} onChange={e => setSetup({...setup, voiceIndex: parseInt(e.target.value)})}>{voices.map((v, i) => <option key={i} value={i}>{v.name} ({v.lang})</option>)}</select></div>
-                    <div className="setup-row"><label>PITCH ({setup.pitch}x)</label><input type="range" min="0.5" max="2.0" step="0.1" value={setup.pitch} onChange={e => setSetup({...setup, pitch: parseFloat(e.target.value)})}/></div>
-                    <div className="setup-row"><label>SPEED ({setup.rate}x)</label><input type="range" min="0.5" max="2.0" step="0.1" value={setup.rate} onChange={e => setSetup({...setup, rate: parseFloat(e.target.value)})}/></div>
-                    <button className="cyber-button" onClick={() => speak("Voice check.")} style={{marginBottom:'10px', background:'transparent', border:'1px solid #38bdf8'}}>🔊 TEST</button>
-                    <button className="cyber-button" onClick={startSession}>INITIALIZE SYSTEM</button>
-                </div>
-            ) : (
-                <>
-                    <div className="chat-log">
-                        {messages.map((m, i) => (<div key={i} className={`chat-bubble ${m.sender}`}>{m.isAudio && <span style={{marginRight:'5px'}}>🎤</span>}{m.text}</div>))}
-                        {phase === "processing" && <div className="chat-bubble ai typing">Echo is thinking...</div>}{phase === "responding" && <div className="chat-bubble ai typing">Echo is replying...</div>}<div ref={chatEndRef} />
-                    </div>
-                    <div className="listener-controls">
-                        {phase === "onboarding" && (
-                            <div className="onboarding-controls">
-                                <label style={{fontSize:'11px', color:'#94a3b8', display:'block', marginBottom:'5px'}}>SAY OR TYPE YOUR NAME:</label>
-                                <div className="input-bar" style={{marginBottom:'10px'}}>
-                                    <input className="cyber-input" value={currentTranscript} onChange={e => { setCurrentTranscript(e.target.value); if(!showPhonetic) setPronunciation(e.target.value); }} placeholder="Display Name (e.g. Onyi)" onKeyDown={(e) => e.key === 'Enter' && handleSubmitName()}/>
-                                </div>
-                                {showPhonetic && (<div className="input-bar" style={{marginBottom:'10px', animation:'fadeIn 0.3s'}}><label style={{fontSize:'9px', color:'#38bdf8', marginRight:'10px'}}>PHONETIC SPELLING:</label><input className="cyber-input" value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="e.g. Own-yee"/></div>)}
-                                <div style={{display:'flex', gap:'5px', marginBottom:'10px'}}>
-                                    {currentTranscript && (<button onClick={() => speak(currentTranscript, pronunciation || currentTranscript)} style={{background:'transparent', border:'1px solid #38bdf8', color:'#38bdf8', borderRadius:'8px', padding:'0 10px', fontSize:'12px'}}>🔊 HEAR IT</button>)}
-                                    {currentTranscript && !showPhonetic && (<button onClick={() => {setShowPhonetic(true); setPronunciation(currentTranscript)}} style={{background:'transparent', border:'none', color:'#94a3b8', fontSize:'10px', textDecoration:'underline'}}>Wrong Pronunciation?</button>)}
-                                </div>
-                                <div style={{display:'flex', gap:'10px'}}>
-                                    <button className={`record-btn ${status === "recording" ? "pulsing" : ""}`} onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording} style={{flex:1, borderRadius:'8px', fontSize:'12px'}}>{status === "recording" ? "🛑 RELEASE" : "🎤 SAY NAME"}</button>
-                                    <button className="cyber-button" onClick={handleSubmitName} style={{flex:1, background: currentTranscript ? '#22c55e' : '#334155'}} disabled={!currentTranscript}>CONFIRM ✅</button>
-                                </div>
-                            </div>
-                        )}
-                        {(phase === "chat" || phase === "processing" || phase === "responding") && (
-                            <div className="record-bar"><button className={`record-btn ${status === "recording" ? "pulsing" : ""}`} onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording} disabled={phase !== "chat"} style={{width: '100%', borderRadius: '12px', padding: '20px'}}>{status === "recording" ? "🛑 RELEASE TO SEND" : phase === "processing" ? "⏳ PROCESSING..." : phase === "responding" ? "🔊 SPEAKING..." : "🎙️ HOLD TO SPEAK"}</button></div>
-                        )}
-                        {phase === "verify" && (
-                            <div className="verify-card">
-                                <div className="audio-preview" style={{marginBottom: '15px', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '12px', border: '1px solid #334155'}}>
-                                    <label style={{fontSize:'10px', color:'#94a3b8', display:'block', marginBottom:'5px', letterSpacing: '1px'}}>REVIEW YOUR AUDIO:</label>
-                                    <audio src={mediaBlobUrl} controls style={{width: '100%', height: '35px', borderRadius: '8px', outline: 'none'}} />
-                                </div>
-
-                                <div className="verify-row">
-                                    <label>I HEARD (TYPE TO EDIT):</label>
-                                    <input className="cyber-input" value={currentTranscript} onChange={e => {setCurrentTranscript(e.target.value); setIsEdited(true);}} style={{border: isEdited ? '1px solid #22c55e' : '1px solid #475569'}}/>
-                                </div>
-                                <div className="verify-row">
-                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'5px'}}>
-                                        <label style={{margin:0}}>MEANING (EDIT IF WRONG):</label>
-                                        <button onClick={handleRegenerateMeaning} disabled={isRegenerating} style={{background: 'transparent', border: '1px solid #38bdf8', color: '#38bdf8', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer'}}>
-                                            {isRegenerating ? "UPDATING..." : "🔄 UPDATE MEANING"}
-                                        </button>
-                                    </div>
-                                    <input className="cyber-input" value={currentClarification} onChange={e => {setCurrentClarification(e.target.value); setIsEdited(true);}} style={{border: '1px solid #38bdf8', color: '#34d399', fontStyle: 'italic'}}/>
-                                </div>
-                                <div className="verify-actions">
-                                    <button className="reject-btn" onClick={handleRetry} style={{background: '#334155', border:'none', color:'#ef4444'}}>🎤 RETRY</button>
-                                    <button className="confirm-btn" onClick={handleConfirm}>{isEdited ? "SEND EDIT ✅" : "CONFIRM ✅"}</button>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* 🟢 FIX: Call the CustomEvent to open the Feedback Modal */}
-                        <div style={{textAlign: 'center', marginTop: '15px', paddingBottom: '10px'}}>
-                            <button onClick={() => window.dispatchEvent(new CustomEvent('open-feedback'))} style={{background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer'}}>
-                                💬 Submit Secure Feedback
-                            </button>
-                        </div>
-                    </div>
-                </>
-            )}
-        </div>
-    );
+.back-icon:hover {
+    color: #f1f5f9 !important;
 }
 
-// ==========================================
-// 🌉 GAME 5: CONVO BRIDGE (Turn-Based Live Translation)
-// ==========================================
-function GameConvoBridge({ userKey, dialects, onBack }) {
-    const [p1Dialect, setP1Dialect] = useState(dialects[0] || "General English");
-    const [p2Dialect, setP2Dialect] = useState(dialects.length > 1 ? dialects[1] : "General English");
-    const [chatLog, setChatLog] = useState([]);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [voices, setVoices] = useState([]);
-
-    useEffect(() => {
-        const loadVoices = () => setVoices(window.speechSynthesis.getVoices().filter(v => v.lang.startsWith("en")));
-        loadVoices();
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-    }, []);
-
-    const speak = (text) => {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            if (voices.length > 0) u.voice = voices[Math.floor(Math.random() * voices.length)]; // Randomize voice for now
-            window.speechSynthesis.speak(u);
-        }
-    };
-
-    const handleTurn = async (blobUrl, blob, speaker) => {
-        setIsProcessing(true);
-        const sourceDialect = speaker === "P1" ? p1Dialect : p2Dialect;
-        const targetDialect = speaker === "P1" ? p2Dialect : p1Dialect;
-
-        try {
-            const app = await Client.connect(SPACE_URL); // Using your singleton client
-            
-            // 1. Transcribe the audio
-            const tRes = await app.predict("/transcribe_check", [blob, sourceDialect]);
-            const originalText = tRes.data[0];
-            
-            // 2. Translate to the other player's dialect
-            const transRes = await app.predict("/translate_peer", [originalText, sourceDialect, targetDialect]);
-            const translatedText = transRes.data[0];
-
-            // 3. Update the chat log
-            setChatLog(prev => [...prev, {
-                sender: speaker,
-                original: originalText,
-                translated: translatedText,
-                sourceD: sourceDialect,
-                targetD: targetDialect
-            }]);
-
-            // 4. Read it out loud to the other player
-            speak(translatedText);
-
-        } catch (e) {
-            console.error("Translation failed:", e);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const { status: p1Status, startRecording: startP1, stopRecording: stopP1 } = useReactMediaRecorder({ audio: true, onStop: (url, blob) => handleTurn(url, blob, "P1") });
-    const { status: p2Status, startRecording: startP2, stopRecording: stopP2 } = useReactMediaRecorder({ audio: true, onStop: (url, blob) => handleTurn(url, blob, "P2") });
-
-    return (
-        <div className="game-layout">
-            <div className="listener-header" style={{display:'flex', alignItems:'center', gap:'10px', marginBottom: '15px'}}>
-                <button onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px'}}>🏠←</button>
-                <h3 style={{margin: 0, color: '#22c55e', flex: 1}}>CONVO BRIDGE</h3>
-                <button onClick={() => setChatLog([])} style={{background:'rgba(0,0,0,0.3)', border:'none', borderRadius:'8px', padding:'4px 8px', color:'#ef4444', fontSize:'12px'}}>🗑️ CLEAR</button>
-            </div>
-
-            <div style={{display: 'flex', flexDirection: 'column', gap: '10px', height: '100%'}}>
-                
-                {/* PLAYER 2 (Top - Flipped for sitting across a table) */}
-                <div style={{background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '15px', borderTop: '3px solid #f472b6', flex: 1, display: 'flex', flexDirection: 'column'}}>
-                    <select className="cyber-input" value={p2Dialect} onChange={e => setP2Dialect(e.target.value)} style={{marginBottom: '10px', color: '#f472b6'}}>
-                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <button 
-                        className={`record-btn ${p2Status === "recording" ? "pulsing" : ""}`} 
-                        onMouseDown={startP2} onMouseUp={stopP2} onTouchStart={startP2} onTouchEnd={stopP2}
-                        disabled={isProcessing || p1Status === "recording"}
-                        style={{width: '100%', padding: '20px', background: p2Status === "recording" ? '#ef4444' : '#334155'}}
-                    >
-                        {p2Status === "recording" ? "🔴 RECORDING..." : isProcessing ? "⏳ TRANSLATING..." : "🎙️ P2 HOLD TO SPEAK"}
-                    </button>
-                </div>
-
-                {/* CHAT LOG (Middle) */}
-                <div style={{height: '250px', overflowY: 'auto', background: '#0f172a', borderRadius: '12px', padding: '10px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                    {chatLog.length === 0 && <div style={{textAlign: 'center', color: '#64748b', marginTop: '50px'}}>Hold a button to start translating.</div>}
-                    {chatLog.map((msg, i) => (
-                        <div key={i} style={{alignSelf: msg.sender === "P1" ? 'flex-end' : 'flex-start', background: msg.sender === "P1" ? 'rgba(56, 189, 248, 0.2)' : 'rgba(244, 114, 182, 0.2)', padding: '10px', borderRadius: '8px', maxWidth: '80%', border: `1px solid ${msg.sender === "P1" ? '#38bdf8' : '#f472b6'}`}}>
-                            <p style={{fontSize: '10px', color: '#94a3b8', margin: '0 0 5px 0'}}>{msg.sourceD} → {msg.targetD}</p>
-                            <p style={{margin: '0 0 5px 0', fontSize: '12px', opacity: 0.8}}>"{msg.original}"</p>
-                            <p style={{margin: 0, fontWeight: 'bold', color: '#fff'}}>{msg.translated}</p>
-                        </div>
-                    ))}
-                </div>
-
-                {/* PLAYER 1 (Bottom) */}
-                <div style={{background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '15px', borderBottom: '3px solid #38bdf8', flex: 1, display: 'flex', flexDirection: 'column'}}>
-                    <select className="cyber-input" value={p1Dialect} onChange={e => setP1Dialect(e.target.value)} style={{marginBottom: '10px', color: '#38bdf8'}}>
-                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <button 
-                        className={`record-btn ${p1Status === "recording" ? "pulsing" : ""}`} 
-                        onMouseDown={startP1} onMouseUp={stopP1} onTouchStart={startP1} onTouchEnd={stopP1}
-                        disabled={isProcessing || p2Status === "recording"}
-                        style={{width: '100%', padding: '20px', background: p1Status === "recording" ? '#ef4444' : '#334155'}}
-                    >
-                        {p1Status === "recording" ? "🔴 RECORDING..." : isProcessing ? "⏳ TRANSLATING..." : "🎙️ P1 HOLD TO SPEAK"}
-                    </button>
-                </div>
-                
-            </div>
-        </div>
-    );
+/* Ensure custom dialect inputs inherit the right theme */
+.cyber-input {
+    background: #1e293b;
+    border: 1px solid #475569;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
 }
 
-// ==========================================
-// 📡 GAME 6: HUMAN CONVO (Automated Matchmaking)
-// ==========================================
-function GameHumanConvo({ userKey, operator, dialects, onBack }) {
-    const [phase, setPhase] = useState("setup"); // setup -> searching -> chat
-    const [roomCode, setRoomCode] = useState("");
-    
-    const [myDialect, setMyDialect] = useState(dialects[0] || "General English");
-    const [partnerDialect, setPartnerDialect] = useState("");
-    
-    const [chatLog, setChatLog] = useState([]);
-    const [transcribedText, setTranscribedText] = useState("");
-    const [isEditing, setIsEditing] = useState(false);
-    const [isSending, setIsSending] = useState(false);
-    
-    const chatLogRef = useRef(chatLog);
-    const endOfMessagesRef = useRef(null);
-
-    useEffect(() => { chatLogRef.current = chatLog; }, [chatLog]);
-
-    // 1. MATCHMAKING POLLING
-    useEffect(() => {
-        if (phase !== "searching") return;
-        
-        const checkMatch = async () => {
-            try {
-                const app = await getClient(); // Use shared client
-                const res = await app.predict("/check_match", [operator]);
-                const data = JSON.parse(res.data[0]);
-                
-                if (data.status === "matched") {
-                    setRoomCode(data.room_id);
-                    setPartnerDialect(data.partner_dialect);
-                    setPhase("chat");
-                }
-            } catch (e) { console.warn("Searching for partner..."); }
-        };
-
-        const interval = setInterval(checkMatch, 3000);
-        return () => clearInterval(interval);
-    }, [phase, operator]);
-
-    // 2. CHAT POLLING
-    useEffect(() => {
-        if (phase !== "chat" || !roomCode) return;
-        
-        const pollMessages = async () => {
-            try {
-                const app = await getClient(); // Use shared client
-                const currentLength = chatLogRef.current.length;
-                const res = await app.predict("/relay_poll", [roomCode, currentLength]);
-                const newMsgs = JSON.parse(res.data[0]);
-                
-                if (newMsgs && newMsgs.length > 0) {
-                    setChatLog(prev => [...prev, ...newMsgs]);
-                    setTimeout(() => endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-                }
-            } catch (e) { console.error("Poll failed", e); }
-        };
-
-        const interval = setInterval(pollMessages, 3000); 
-        return () => clearInterval(interval);
-    }, [phase, roomCode]);
-
-    const handleStartSearch = async () => {
-        setPhase("searching");
-        try {
-            const app = await Client.connect(SPACE_URL);
-            await app.predict("/join_queue", [operator, myDialect]);
-        } catch (e) {
-            alert("Failed to join network. Retrying...");
-            setPhase("setup");
-        }
-    };
-
-    const handleCancelSearch = async () => {
-        setPhase("setup");
-        try {
-            const app = await Client.connect(SPACE_URL);
-            await app.predict("/leave_queue", [operator]);
-        } catch (e) {}
-    };
-
-    const handleAudioStop = async (blobUrl, blob) => {
-        setTranscribedText("⏳ Transcribing audio...");
-        setIsEditing(true);
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/transcribe_check", [blob, myDialect]);
-            setTranscribedText(res.data[0]);
-        } catch (e) {
-            setTranscribedText("Error transcribing. Please type your message.");
-        }
-    };
-
-    const { status, startRecording, stopRecording } = useReactMediaRecorder({ audio: true, onStop: handleAudioStop });
-
-    const handleSend = async () => {
-        if (!transcribedText.trim()) return;
-        setIsSending(true);
-        try {
-            const app = await Client.connect(SPACE_URL);
-            await app.predict("/relay_send", [roomCode, operator, transcribedText, myDialect, partnerDialect]);
-            setIsEditing(false);
-            setTranscribedText("");
-        } catch (e) {
-            alert("Failed to send message.");
-        } finally {
-            setIsSending(false);
-        }
-    };
-
-    if (phase === "setup") {
-        return (
-            <div className="game-layout">
-                <div className="mission-card" style={{padding: '30px', textAlign: 'center'}}>
-                    <div className="icon-large">📡</div>
-                    <h2 style={{color: '#f97316'}}>GLOBAL NETWORK</h2>
-                    <p style={{fontSize: '12px', color: '#cbd5e1', marginBottom: '20px'}}>Join the pool to securely match with another Operator.</p>
-                    
-                    <label style={{fontSize: '10px', color: '#94a3b8'}}>YOUR DIALECT:</label>
-                    <select className="cyber-input" value={myDialect} onChange={e => setMyDialect(e.target.value)} style={{marginBottom: '30px', color: '#f97316'}}>
-                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-
-                    <div style={{display: 'flex', gap: '10px'}}>
-                        <button className="cyber-button" onClick={handleStartSearch} style={{flex: 2, background: '#f97316', color: '#000'}}>FIND PARTNER</button>
-						<button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (phase === "searching") {
-        return (
-            <div className="game-layout">
-                <div className="mission-card" style={{padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                    <div className="radar-spinner" style={{width: '80px', height: '80px', borderRadius: '50%', border: '4px solid #f97316', borderTopColor: 'transparent', animation: 'spin 1s linear infinite', marginBottom: '20px'}}></div>
-                    <h3 style={{color: '#f97316'}}>SCANNING NETWORK...</h3>
-                    <p style={{fontSize: '12px', color: '#94a3b8', marginBottom: '30px'}}>Looking for available Operators.</p>
-                    <button className="cancel-btn" onClick={handleCancelSearch} style={{width: '100%'}}>ABORT SEARCH</button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="game-layout" style={{display: 'flex', flexDirection: 'column'}}>
-            <div className="listener-header" style={{display:'flex', alignItems:'center', gap:'10px', marginBottom: '10px', flexShrink: 0}}>
-                <button onClick={handleCancelSearch} style={{background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', fontSize:'20px'}}>🔌</button>
-                <h3 style={{margin: 0, color: '#f97316', flex: 1, fontSize: '14px'}}>LINKED: {partnerDialect.toUpperCase()}</h3>
-            </div>
-
-            {/* CHAT WINDOW */}
-            <div style={{flex: 1, overflowY: 'auto', background: 'rgba(0,0,0,0.5)', borderRadius: '12px', padding: '15px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '10px'}}>
-                {chatLog.length === 0 && <div style={{textAlign: 'center', color: '#64748b', marginTop: '50px'}}>Connection secured. Start speaking.</div>}
-                
-                {chatLog.map((msg, i) => {
-                    const isMe = msg.sender === operator;
-                    return (
-                        <div key={i} style={{alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%'}}>
-                            <div style={{fontSize: '9px', color: '#64748b', textAlign: isMe ? 'right' : 'left', marginBottom: '2px'}}>{msg.dialect}</div>
-                            <div style={{background: isMe ? 'rgba(249, 115, 22, 0.2)' : 'rgba(56, 189, 248, 0.2)', padding: '10px', borderRadius: '12px', border: `1px solid ${isMe ? '#f97316' : '#38bdf8'}`}}>
-                                <p style={{margin: 0, color: '#fff', fontSize: '14px'}}>{msg.original}</p>
-                            </div>
-                            
-                            {/* 🟢 SMART PROMPT INTERVENTION */}
-                            {msg.translation && (
-                                <div style={{background: '#1e293b', borderLeft: '3px solid #facc15', padding: '8px', marginTop: '5px', borderRadius: '4px', fontSize: '11px'}}>
-                                    <strong style={{color: '#facc15'}}>🤖 Meaning ({msg.target_dialect}):</strong> <span style={{color: '#cbd5e1'}}>{msg.translation}</span>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-                <div ref={endOfMessagesRef} />
-            </div>
-
-            {/* INPUT AREA */}
-            <div style={{background: '#0f172a', padding: '15px', borderRadius: '12px', border: '1px solid #f97316', flexShrink: 0}}>
-                {!isEditing ? (
-                    <button 
-                        className={`record-btn ${status === "recording" ? "pulsing" : ""}`} 
-                        onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-                        style={{width: '100%', padding: '20px', background: status === "recording" ? '#ef4444' : '#334155'}}
-                    >
-                        {status === "recording" ? "🔴 RECORDING..." : "🎙️ HOLD TO SPEAK"}
-                    </button>
-                ) : (
-                    <div>
-                        <label style={{fontSize: '10px', color: '#94a3b8', marginBottom: '5px', display: 'block'}}>EDIT TRANSCRIPT BEFORE SENDING:</label>
-                        <textarea className="cyber-input" value={transcribedText} onChange={e => setTranscribedText(e.target.value)} style={{height: '60px', marginBottom: '10px', width: '100%', boxSizing: 'border-box'}} />
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <button className="cancel-btn" onClick={() => setIsEditing(false)} style={{flex: 1}}>CANCEL</button>
-                            <button className="cyber-button" onClick={handleSend} disabled={isSending || transcribedText.includes("⏳")} style={{flex: 2, background: '#f97316', color: '#000'}}>
-                                {isSending ? "EVALUATING..." : "TRANSMIT 🚀"}
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
+.cyber-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
 }
 
-
-// ==========================================
-// ⚙️ SHARED GAME LAYOUT 
-// ==========================================
-// 🟢 Added onChangeTopic to the props
-function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaBlob, clearBlobUrl, dialects, setDialects, userKey, operator, setXP, onBack, onNext, timer, mode, sourceTag, onReset, onChangeTopic }) {
-    const [step, setStep] = useState("RECORD"); 
-    const [transcribed, setTranscribed] = useState("");
-    const [clarification, setClarification] = useState("");
-    const [tone, setTone] = useState("Neutral / Conversational"); 
-    const [context, setContext] = useState("General");
-    const [pragmatics, setPragmatics] = useState("");
-    const [isRegenerating, setIsRegenerating] = useState(false); 
-    const [dialect, setDialect] = useState(dialects[0] || "General");
-    
-    const [customD, setCustomD] = useState("");
-    const [captcha, setCaptcha] = useState("");
-    const [captchaMath, setCaptchaMath] = useState({ a: 3, b: 4 });
-
-    useEffect(() => {
-        if (dialects.length > 0 && !dialects.includes(dialect)) { setDialect(dialects[0]); }
-    }, [dialects]);
-
-    useEffect(() => {
-        if (dialect === "+ Add New Dialect") {
-            setCaptchaMath({
-                a: Math.floor(Math.random() * 10) + 1,
-                b: Math.floor(Math.random() * 10) + 1
-            });
-            setCaptcha(""); 
-        }
-    }, [dialect]);
-
-    const [lastProcessedBlob, setLastProcessedBlob] = useState(null);
-    useEffect(() => {
-        if (mediaBlob && mediaBlob !== lastProcessedBlob && step === "RECORD") {
-            setLastProcessedBlob(mediaBlob);
-            handleAnalyze();
-        }
-    }, [mediaBlob, step, lastProcessedBlob]);
-
-    const handleAnalyze = async () => {
-        if (!mediaBlob) return;
-        setStep("ANALYZING");
-        try {
-            const blob = await fetch(mediaBlob).then(r => r.blob());
-            const app = await Client.connect(SPACE_URL);
-            const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            const tRes = await app.predict("/transcribe_check", [blob, d]);
-            const text = tRes.data[0];
-            setTranscribed(text);
-            const cRes = await app.predict("/generate_clarifications", [text, d]);
-            parseClarification(cRes.data[0]);
-            setStep("REVIEW");
-        } catch (e) { 
-            setStep("REVIEW"); setTranscribed("Error analyzing audio."); 
-        }
-    };
-
-    const parseClarification = (rawData) => {
-        let data;
-        try { data = JSON.parse(rawData); } catch { data = { clarification: rawData }; }
-        setClarification(data.clarification || data.Meaning || rawData);
-        setContext(data.context || "General");
-        setPragmatics(data.pragmatics || "");
-    };
-
-    const handleRegenerate = async () => {
-        if (!transcribed.trim()) return;
-        setIsRegenerating(true);
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            const res = await app.predict("/generate_clarifications", [transcribed, d]);
-            parseClarification(res.data[0]);
-            setIsRegenerating(false);
-        } catch (e) { setClarification("Failed to regenerate."); setIsRegenerating(false); }
-    };
-
-    const handleSubmit = async () => {
-        if (dialect === "+ Add New Dialect") {
-            if (!customD.trim()) { alert("Please type a new dialect name."); return; }
-            if (parseInt(captcha) !== (captchaMath.a + captchaMath.b)) { 
-                alert(`Bot Check Failed! ${captchaMath.a} + ${captchaMath.b} = ${captchaMath.a + captchaMath.b}.`); 
-                return; 
-            }
-        }
-
-        setStep("MINTING");
-        try {
-            const app = await Client.connect(SPACE_URL);
-            const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            let wrappedAudio = null;
-            if (mediaBlob) {
-                try {
-                    const blob = await fetch(mediaBlob).then(r => r.blob());
-                    const audioFile = new File([blob], `capture_${Date.now()}.wav`, { type: "audio/wav" });
-                    wrappedAudio = handle_file(audioFile);
-                } catch (e) {}
-            }
-            const finalOperatorId = operator || "0xUnknown";
-            await app.predict("/check_and_submit_logic", [
-                transcribed, d, customD, clarification, tone, context, pragmatics,
-                sourceTag || "Unknown Game", "User/AI Hybrid", finalOperatorId, wrappedAudio, false
-            ]);
-            setXP(p => p + 50);
-            if (customD && dialect === "+ Add New Dialect") {
-                setDialects(prev => {
-                    const clean = prev.filter(d => d !== "+ Add New Dialect");
-                    return Array.from(new Set([customD, ...clean, "+ Add New Dialect"]));
-                });
-                setDialect(customD);
-            }
-            setStep("💎 Contribution Saved!"); 
-            setTranscribed(""); setClarification(""); setCaptcha("");
-            
-            setTimeout(() => {
-                if (onNext) { 
-                    if(clearBlobUrl) clearBlobUrl();
-                    setLastProcessedBlob(null);
-                    setStep("RECORD"); 
-                    // 🟢 FIX: Pass the user's transcript & clarification UP to the game engine
-                    onNext(transcribed, clarification); 
-                } else { onBack(); }
-            }, 1500);
-
-        } catch (e) { setStep("RECORD"); }
-    };
-
-    return (
-        <div className="game-layout">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: '10px'}}>
-                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                    {onBack && <button className="back-icon" onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px', padding:'0'}} title="Back to Menu">🏠←</button>}
-                    <div>
-                        <h3 style={{margin: 0, color: '#f8fafc'}}>{title}</h3>
-                    </div>
-                </div>
-                <div style={{display:'flex', gap:'5px', alignItems: 'center'}}>
-                    {/* 🟢 NEW: The manual Change Topic button */}
-                    {onChangeTopic && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'11px', color:'#f472b6', fontWeight:'bold'}} title="Change Topic">🔄 TOPIC</button>)}
-                    {onReset && (<button onClick={onChangeTopic} style={{background:'rgba(244, 114, 182, 0.2)', border:'1px solid #f472b6', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', fontSize:'16px', color:'#f472b6', fontWeight:'bold'}} title="Reset Identity">🔄🎮</button>)}
-                </div>
-            </div>
-
-            {mode === "vision" ? (
-                <div className="vision-mode-container" style={{ position: 'relative', width: '100%', height: '250px', borderRadius: '12px', overflow: 'hidden', marginBottom: '15px', border: '1px solid #a78bfa' }}>
-                    <div className="vision-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: `url(${mission.image})`, backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 1 }} />
-                    
-                    {/* 🟢 FIX: Locked text to the bottom of the image with absolute positioning and a dark gradient for guaranteed visibility on Android */}
-                    <div className="vision-text-block" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', padding: '20px 10px 10px 10px', background: 'linear-gradient(to top, rgba(0,0,0,0.95), transparent)', textAlign: 'center', textShadow: '1px 1px 2px #000', zIndex: 2, boxSizing: 'border-box' }}>
-                        {mission.subtext && <p className="subtext" style={{ color: '#facc15', margin: '0 0 5px 0', fontSize: '11px', letterSpacing: '1px' }}>{mission.subtext}</p>}
-                        <p className="main-text" style={{ color: '#ffffff', fontWeight: 'bold', margin: 0, fontSize: '15px' }}>{mission.text}</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="mission-card">
-                    <div className="doodle-bg" style={{backgroundImage: `url(${mission.image})`}} />
-                    {/* 🟢 FIX: Added heavy text-shadow and forced bright colors for Speed Chat & Archivist */}
-                    <div className="mission-content-overlay" style={{ textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)' }}>
-                        <div>
-                            {mission.subtext && <p style={{fontSize:'0.8em', opacity: 0.9, marginBottom:'5px', color: '#38bdf8'}}>{mission.subtext}</p>}
-                            <p style={{color: '#ffffff', fontWeight: 'bold', fontSize: '1.1em'}}>{mission.text}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            <div className="control-panel">
-                {(step === "RECORD" || step === "REVIEW") && (
-                    <div className="dialect-selector" style={{marginBottom: '10px'}}>
-                        <label>PLEASE CHOOSE OR ADD YOUR TARGET ENGLISH/CREOLE DIALECT.</label>
-                        <select value={dialect} onChange={e => setDialect(e.target.value)}>
-                            {dialects.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        
-                        {dialect === "+ Add New Dialect" && (
-                            <div style={{marginTop: '10px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px dotted #38bdf8'}}>
-                                <input className="cyber-input" placeholder="Enter Dialect Name (e.g. Scottish Gaelic)" value={customD} onChange={e => setCustomD(e.target.value)} style={{marginBottom: '10px', width: '90%'}}/>
-                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-                                    <span style={{fontSize: '12px', color: '#94a3b8'}}>Human Check: {captchaMath.a} + {captchaMath.b} =</span>
-                                    <input className="cyber-input" style={{width: '60px', padding: '5px', textAlign: 'center'}} type="number" value={captcha} onChange={e => setCaptcha(e.target.value)} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {step === "RECORD" && (
-                    <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                        {timer !== undefined && recStatus === "recording" && (
-                            <div style={{ fontSize: '28px', fontWeight: 'bold', color: timer <= 3 ? '#ef4444' : '#38bdf8', marginBottom: '15px', textShadow: '0 0 10px rgba(56, 189, 248, 0.5)'}}>
-                                {/* 🟢 FIX: Displays TIME'S UP when the clock hits zero */}
-                                {timer === 0 ? "🛑 TIME'S UP!" : `⏱️ 00:${timer < 10 ? `0${timer}` : timer}`}
-                            </div>
-                        )}
-                        <button 
-                            className={`cyber-button ${recStatus === 'recording' ? 'recording pulsing' : ''}`}
-                            onPointerDown={startRec} onPointerUp={stopRec} onTouchStart={startRec} onTouchEnd={stopRec}
-                            style={{ width: '100%', padding: '20px', fontSize: '16px', backgroundColor: recStatus === 'recording' ? '#ef4444' : 'rgba(0,0,0,0.5)' }}
-                        >
-                            {recStatus === "recording" ? "🔴 RECORDING... RELEASE TO SEND" : "🎙️ HOLD TO SPEAK"}
-                        </button>
-                    </div>
-                )}
-                
-                {(step === "ANALYZING" || step === "MINTING") && <div className="loading">PROCESSING...</div>}
-                
-                {step === "REVIEW" && (
-                    <div className="review-box">
-                        <div className="audio-preview" style={{marginBottom: '10px'}}><label style={{fontSize:'10px', color:'#94a3b8', display:'block', marginBottom:'5px'}}>REVIEW RECORDING:</label><audio src={mediaBlob} controls style={{width: '100%', borderRadius: '8px'}} /></div>
-                        <div className="input-group"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}><label>I HEARD (EDIT IF NEEDED):</label></div><textarea value={transcribed} onChange={e => setTranscribed(e.target.value)} /></div>
-                        <div className="input-group"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'5px'}}><label style={{margin:0}}>MEANING:</label><button onClick={handleRegenerate} disabled={isRegenerating} style={{background: 'transparent', border: '1px solid #38bdf8', color: '#38bdf8', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer'}}>{isRegenerating ? "UPDATING..." : "🔄 REGENERATE FROM TEXT"}</button></div><textarea value={clarification} onChange={e => setClarification(e.target.value)} /></div>
-                        <div className="input-group"><label>TONE:</label><select value={tone} onChange={e => setTone(e.target.value)}>{TONES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                        <div className="action-row">
-                            <button className="cancel-btn" onClick={() => { if(clearBlobUrl) clearBlobUrl(); setLastProcessedBlob(null); setStep("RECORD"); }}>RETRY</button>
-                            <button className="cyber-button" onClick={handleSubmit}>MINT (+50 XP)</button>
-                        </div>
-                    </div>
-                )}
-                
-                {/* 🟢 FIX: Call the CustomEvent to open the Feedback Modal */}
-                <div style={{textAlign: 'center', marginTop: '15px', paddingBottom: '10px'}}>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('open-feedback'))} style={{background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer'}}>
-                        💬 Submit Secure Feedback
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+/* Fixes the setup screen spacing for Consent layout */
+.setup-screen h2 {
+    margin: 10px 0 20px 0;
 }
-
-
-export default App;
