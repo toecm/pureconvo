@@ -1,5 +1,5 @@
 // api/gradio-proxy.js
-import { client, handle_file } from "@gradio/client";
+// 🟢 FIX: Removed the static import at the top of the file
 
 export default async function handler(req, res) {
   // 1. Only allow POST requests
@@ -10,6 +10,9 @@ export default async function handler(req, res) {
   const { endpoint, args } = req.body;
 
   try {
+    // 🟢 FIX: Dynamic Import to solve the Vercel ERR_REQUIRE_ESM crash
+    const { client, handle_file } = await import("@gradio/client");
+
     // 2. Authenticate securely using the Vercel secret
     const hfToken = process.env.HF_TOKEN;
     if (!hfToken) throw new Error("Server configuration error: HF_TOKEN missing");
@@ -18,8 +21,7 @@ export default async function handler(req, res) {
       hf_token: hfToken
     });
 
-    // 🟢 3. SMART FILE DETECTION
-    // Scan the arguments. If it's a base64 audio/image string, wrap it in handle_file()
+    // 3. SMART FILE DETECTION
     const processedArgs = (args || []).map(arg => {
         if (typeof arg === 'string' && arg.startsWith('data:')) {
             return handle_file(arg);
@@ -27,7 +29,6 @@ export default async function handler(req, res) {
         return arg;
     });
 
-    // Ensure endpoint has a leading slash
     const safeEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
     // 4. Forward the request to the Private Space
