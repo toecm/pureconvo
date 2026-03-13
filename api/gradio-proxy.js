@@ -1,8 +1,8 @@
 // api/gradio-proxy.js
-import { client } from "@gradio/client";
+import { client, handle_file } from "@gradio/client";
 
 export default async function handler(req, res) {
-  // Only allow POST requests
+  // 1. Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const { endpoint, args } = req.body;
 
   try {
-    // 1. Authenticate with the PRIVATE Hugging Face Space using the Vercel secret
+    // 2. Authenticate securely using the Vercel secret
     const hfToken = process.env.HF_TOKEN;
     if (!hfToken) throw new Error("Server configuration error: HF_TOKEN missing");
 
@@ -18,10 +18,22 @@ export default async function handler(req, res) {
       hf_token: hfToken
     });
 
-    // 2. Forward the request to the Space
-    const result = await app.predict(endpoint, args || []);
+    // 🟢 3. SMART FILE DETECTION
+    // Scan the arguments. If it's a base64 audio/image string, wrap it in handle_file()
+    const processedArgs = (args || []).map(arg => {
+        if (typeof arg === 'string' && arg.startsWith('data:')) {
+            return handle_file(arg);
+        }
+        return arg;
+    });
 
-    // 3. Send the result back to the React frontend
+    // Ensure endpoint has a leading slash
+    const safeEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    // 4. Forward the request to the Private Space
+    const result = await app.predict(safeEndpoint, processedArgs);
+
+    // 5. Send the result back to the React frontend
     return res.status(200).json(result);
 
   } catch (error) {
