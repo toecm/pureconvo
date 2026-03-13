@@ -1,10 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Client, handle_file } from "@gradio/client";
 import { useReactMediaRecorder } from "react-media-recorder";
 import './App.css';
 
-// ... (KEEP ALL ASSETS, CONFIG, GLOBAL VARIABLES, HELPER FUNCTIONS UNCHANGED) ...
 // --- 🎨 GAME ASSETS ---
 const GAME_ASSETS = {
     LISTENER: {
@@ -52,7 +50,7 @@ const GAME_ASSETS = {
         ]
     },
     BRIDGE: {
-        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/convo%20bridge%20mobile.png", // You can update this image later
+        image: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/convo%20bridge%20mobile.png",
         video: "https://huggingface.co/spaces/toecm/PureVersation/resolve/main/assets/convo%20bridge%20vid.mp4",
         color: "#22c55e",
         instructions: [
@@ -77,13 +75,23 @@ const GAME_ASSETS = {
 // --- CONFIGURATION ---
 const SPACE_URL = "toecm/PureVersation"; 
 
-// 🟢 GLOBAL SINGLETON: Keeps one stable connection for all games
-let sharedClient = null;
-const getClient = async () => {
-    if (!sharedClient) {
-        sharedClient = await Client.connect(SPACE_URL);
-    }
-    return sharedClient;
+// 🟢 NEW HELPER: Converts Files/Blobs to Base64 strings so they can pass through JSON securely
+const fileToBase64 = (fileOrBlob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(fileOrBlob);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+});
+
+// 🟢 GLOBAL PROXY HELPER: Routes all requests through Vercel securely
+const proxyPredict = async (endpoint, args = []) => {
+    const response = await fetch('/api/gradio-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint, args })
+    });
+    if (!response.ok) throw new Error("Proxy fetch failed");
+    return await response.json();
 };
 
 const FALLBACK_DIALECTS = [
@@ -116,9 +124,8 @@ const getDoodleUrl = (k) => `https://loremflickr.com/400/200/${k},sketch/all?ran
 const getPhotoUrl = (k) => `https://loremflickr.com/400/200/${k},street,city/all?random=${Date.now()}`;
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-// ... (KEEP ConsentScreen, GameTutorial, FeedbackModal UNCHANGED) ...
 // ==========================================
-// 🟢 FIX 1: ETHICAL AI CONSENT SCREEN (Expanded with Tokenomics & Slashing)
+// 🟢 ETHICAL AI CONSENT SCREEN 
 // ==========================================
 function ConsentScreen({ onConsent }) {
     return (
@@ -232,17 +239,15 @@ function FeedbackModal({ onClose }) {
         setStatus("⏳ Encrypting and Sending...");
         
         try {
-            const app = await Client.connect(SPACE_URL);
-            let wrappedImage = null;
+            let base64Image = null;
             if (image) {
-                const imgFile = new File([image], `bug_${Date.now()}.png`, { type: image.type });
-                wrappedImage = handle_file(imgFile);
+                base64Image = await fileToBase64(image);
             }
             
-            await app.predict("/submit_feedback", [
+            await proxyPredict("/submit_feedback", [
                 opId || "Anonymous", 
                 feedback, 
-                wrappedImage
+                base64Image
             ]);
             
             setStatus("✅ Report securely submitted.");
@@ -281,15 +286,12 @@ function FeedbackModal({ onClose }) {
     );
 }
 
-// ... (KEEP App, HomeMenu, GameArchivist UNCHANGED) ...
 // ==========================================
 // 🚀 MAIN APP COMPONENT
 // ==========================================
 function App() {
   const [hasConsented, setHasConsented] = useState(() => localStorage.getItem("pureversation_consented") === "true");
-  
   const [showFeedback, setShowFeedback] = useState(false);
-  
   const [activeGame, setActiveGame] = useState("HOME"); 
   const [cloudStatus, setCloudStatus] = useState("⚪ CHECKING SYNC...");
   const [userKey, setUserKey] = useState(null);
@@ -337,21 +339,30 @@ function App() {
     const greetList = localStorage.getItem("pureversation_session_id") ? RETURNING_GREETINGS : NEW_GREETINGS;
     setGreeting(`${getRandom(greetList)} ${getRandom(PRIVACY_STATEMENTS)}`);
 
-    const checkSync = async () => {
+    const checkSyncStatus = async () => {
         try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/check_cloud_sync");
-            setCloudStatus(res.data[0]); 
-        } catch (e) { setCloudStatus("🔴 SYNC OFFLINE"); }
+            const response = await fetch('/api/gradio-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: "check_cloud_sync", 
+                    args: [] 
+                })
+            });
+
+            const result = await response.json();
+            if (result.error) throw new Error(result.error);
+            
+            setCloudStatus(result.data[0]); 
+        } catch (err) {
+            console.error("Sync check failed:", err);
+            setCloudStatus("🔴 SYNC OFFLINE");
+        }
     };
 
     const loadDialects = async () => {
         try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/api_get_dialects"); 
-            
-            console.log("📡 RAW DIALECT DATA RECEIVED:", res.data[0]);
-            
+            const res = await proxyPredict("/api_get_dialects"); 
             const rawData = res.data[0];
             let parsedArray = [];
             
@@ -376,15 +387,14 @@ function App() {
         }
     };
 
-    // 🟢 FIX: Run them one after the other so Hugging Face doesn't block the simultaneous connection requests
     const initializeApp = async () => {
-        await checkSync();
+        await checkSyncStatus();
         await loadDialects();
     };
 
     initializeApp();
 
-    const syncInterval = setInterval(checkSync, 300000); 
+    const syncInterval = setInterval(checkSyncStatus, 300000); 
     return () => clearInterval(syncInterval);
   }, []);
 
@@ -416,14 +426,14 @@ function App() {
 
                 {activeGame === "HOME" && <HomeMenu onSelect={setActiveGame} greeting={greeting} />}
 
-		{activeGame === "CONVO" && (
+                {activeGame === "CONVO" && (
                     <GameHumanConvo 
                         userKey={userKey} operator={address} dialects={dialects} 
                         onBack={() => setActiveGame("HOME")} 
                     />
                 )}
 
-		{activeGame === "BRIDGE" && (
+                {activeGame === "BRIDGE" && (
                     <GameConvoBridge 
                         userKey={userKey} dialects={dialects} 
                         onBack={() => setActiveGame("HOME")} 
@@ -484,7 +494,7 @@ function HomeMenu({ onSelect, greeting }) {
             <div className="welcome-banner"><p>{greeting}</p></div>
             <div className="instruction-zone"><p>SELECT MISSION</p><div className="instruction-line"></div></div>
             <div className="menu-grid" style={{paddingBottom: '40px'}}>
-		
+        
                 <div className="menu-card" onClick={() => handleGameClick("LISTENER")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.LISTENER.image})`, backgroundSize: 'cover'}}>
                     <div className="icon-large">👂</div><h3>THE LISTENER</h3><p>Active Conversation Mode</p>
                 </div>
@@ -497,10 +507,10 @@ function HomeMenu({ onSelect, greeting }) {
                 <div className="menu-card" onClick={() => handleGameClick("VISION")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.VISION.image})`, backgroundSize: 'cover'}}>
                     <div className="icon-large">👁️</div><h3>VISION QUEST</h3><p>Describe what you see</p>
                 </div>
-		<div className="menu-card" onClick={() => handleGameClick("BRIDGE")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.BRIDGE.image})`, backgroundSize: 'cover', border: '1px solid #22c55e'}}>
+        <div className="menu-card" onClick={() => handleGameClick("BRIDGE")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.BRIDGE.image})`, backgroundSize: 'cover', border: '1px solid #22c55e'}}>
                     <div className="icon-large">🌉</div><h3 style={{color: '#22c55e'}}>CONVO BRIDGE</h3><p>Live 2-Player Translation</p>
                 </div>
-		<div className="menu-card" onClick={() => handleGameClick("CONVO")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.CONVO.image})`, backgroundSize: 'cover', border: '1px solid #f97316'}}>
+        <div className="menu-card" onClick={() => handleGameClick("CONVO")} style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url(${GAME_ASSETS.CONVO.image})`, backgroundSize: 'cover', border: '1px solid #f97316'}}>
             <div className="icon-large">📡</div><h3 style={{color: '#f97316'}}>HUMAN CONVO</h3><p>Remote 2-Device Chat</p>
         </div>
             </div>
@@ -522,8 +532,7 @@ function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting
         setMission(prev => ({ ...prev, text: "I appreciate you!", subtext: "Thinking of what to chat about...", image: getDoodleUrl("success") }));
 
         try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/generate_mission", [randomTopic]);
+            const res = await proxyPredict("/generate_mission", [randomTopic]);
             let data;
             try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
             setTimeout(() => {
@@ -546,17 +555,15 @@ function GameArchivist({ userKey, setXP, dialects, setDialects, onBack, greeting
     );
 }
 
-// ... (KEEP GameSpeedChat, GameVisionQuest, GameActiveListener, GameConvoBridge UNCHANGED) ...
 // ==========================================
 // ⚡ GAME 2: SPEED CHAT 
 // ==========================================
 function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting, operator }) {
     const [gameStage, setGameStage] = useState(() => localStorage.getItem(`speed_stage_${userKey}`) || "onboarding"); 
     const [nickname, setNickname] = useState(localStorage.getItem("pure_nickname") || "");
-    const [currentTopic, setCurrentTopic] = useState(""); // 🟢 NEW: Tracks what they are currently talking about
-    const [customTopicInput, setCustomTopicInput] = useState(""); // 🟢 NEW: Tracks what they type
+    const [currentTopic, setCurrentTopic] = useState(""); 
+    const [customTopicInput, setCustomTopicInput] = useState(""); 
     const [loading, setLoading] = useState(false);
-    const clientRef = useRef(null);
 
     const [mission, setMission] = useState(() => {
         const savedMission = localStorage.getItem(`speed_mission_${userKey}`);
@@ -577,7 +584,6 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
                 setTimeLeft(prevTime => {
                     if (prevTime <= 1) { 
                         clearInterval(timerRef.current); 
-                        // 🟢 FIX: 500ms invisible buffer to prevent audio clipping
                         setTimeout(() => {
                             stopRecordingRef.current(); 
                         }, 500);
@@ -596,65 +602,49 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
     const fetchMission = async (topic) => {
         setLoading(true);
         setMission(prev => ({ ...prev, subtext: `Establishing Neural Link for: ${topic}...` }));
-        try {
-            // 🟢 FIX: Directly connect to the cloud space to ensure it never fails on the first load
-            const app = await Client.connect(SPACE_URL);
-            
-            // 🟢 FIX 1: Increased timeout from 4.5s to 8s to allow the LLM time to generate
+        try {            
             const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
-            
-            // 🟢 FIX 2: Clearer prompt instructions for the AI
             const prompt = `Topic: ${topic}. Ask a short, engaging 1-sentence question about this topic for a player named ${nickname}.`;
-            const apiPromise = app.predict("/generate_mission", [prompt]);
+            const apiPromise = proxyPredict("/generate_mission", [prompt]);
             
             const res = await Promise.race([apiPromise, timeoutPromise]);
             
             let data;
             try { data = JSON.parse(res.data[0]); } catch { data = { text: res.data[0] }; }
-            
-            // Clean up any stray quotation marks the AI might add
             let cleanText = typeof data.text === 'string' ? data.text.replace(/^["']|["']$/g, '') : data.text;
             
             setMission({ text: cleanText, subtext: `Target: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) });
             setGameStage("mission");
         } catch (e) { 
-            // 🟢 FIX 3: Smart contextual fallback that actually makes sense!
             let fallbackText = "";
-            
             if (topic === "General") {
-                // If the topic is General, grab a random human-sounding question
                 const randomStarter = STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)];
                 fallbackText = `Hey ${nickname}, here's a random one: ${randomStarter}`;
             } else {
-                // If it's a specific topic, use it in the sentence
                 fallbackText = `Hey ${nickname}, What do you like about ${topic.toLowerCase()} the most?`;
             }
-            
             setMission({ text: fallbackText, subtext: `Local Backup: ${topic} • 10 Seconds`, image: getDoodleUrl(topic) }); 
             setGameStage("mission");
         } finally { setLoading(false); }
     };
 
-    // 🟢 FIX: Start round with their custom topic, or default to "General"
     const startFirstRound = () => { 
         if(nickname) { 
             localStorage.setItem("pure_nickname", nickname); 
             const startingTopic = customTopicInput.trim() || "General";
             setCurrentTopic(startingTopic);
-            setCustomTopicInput(""); // Clear the input
+            setCustomTopicInput(""); 
             fetchMission(startingTopic); 
         } 
     };
 
-    // 🟢 FIX: Reusable handler for clicking OR typing a topic
     const handleTopicSelection = (topic) => {
         const selected = topic.trim() || "General";
         setCurrentTopic(selected);
-        setCustomTopicInput(""); // Clear the input
+        setCustomTopicInput(""); 
         fetchMission(selected);
     };
 
-    // 🟢 NEW: Instead of going to the menu, we generate a contextual follow-up question
     const handleNextRound = (userUtterance, userClarification) => {
         const lastAnswer = userClarification || userUtterance || "something interesting";
         fetchFollowUp(currentTopic, lastAnswer);
@@ -664,13 +654,10 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
         setLoading(true);
         setMission(prev => ({ ...prev, subtext: `Analyzing response...` }));
         try {
-            const app = await Client.connect(SPACE_URL); // 🟢 FIX: Directly connect so the AI doesn't fail!
             const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 8000));
-            
-            // 🟢 NEW: Tell Gemini exactly what the user just said so it can dig deeper
             const prompt = `Topic: ${topic}. Player Name: ${nickname}. The player just answered a question by saying: "${lastAnswer}". Ask a short, engaging 1-sentence follow-up question asking WHY or asking for more details.`;
             
-            const apiPromise = app.predict("/generate_mission", [prompt]);
+            const apiPromise = proxyPredict("/generate_mission", [prompt]);
             const res = await Promise.race([apiPromise, timeoutPromise]);
             
             let data;
@@ -698,7 +685,6 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
                     <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', fontSize: '18px' }}>WHAT'S YOUR NICKNAME?</h3>
                     <input className="cyber-input" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="e.g. Maverick" style={{margin:'10px 0 20px', textAlign:'center'}}/>
                     
-                    {/* 🟢 NEW: Ask for the initial topic */}
                     <h3 style={{ color: '#38bdf8', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', fontSize: '14px' }}>WHAT DO YOU WANT TO TALK ABOUT?</h3>
                     <input className="cyber-input" value={customTopicInput} onChange={e => setCustomTopicInput(e.target.value)} placeholder="e.g. Tech, Food, Anime (Optional)" style={{margin:'10px 0 20px', textAlign:'center'}}/>
 
@@ -714,7 +700,6 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
                 <div className="mission-card" style={{ height: 'auto', padding: '20px', display: 'block' }}>
                     <h3 style={{ color: '#ffffff', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0px 4px 10px rgba(0,0,0,0.9)', marginBottom: '15px' }}>🔄 MISSION COMPLETE</h3>
                     
-                    {/* 🟢 NEW: Option to continue the current conversation branch */}
                     {currentTopic && (
                         <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #facc15' }}>
                             <p style={{ fontSize: '13px', color: '#facc15', fontWeight: 'bold', margin: '0 0 10px 0', textShadow: '1px 1px 2px #000' }}>Keep talking about "{currentTopic}"?</p>
@@ -726,7 +711,6 @@ function GameSpeedChat({ userKey, setXP, dialects, setDialects, onBack, greeting
 
                     <p style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '10px' }}>Or switch to a new topic:</p>
 
-                    {/* 🟢 NEW: Input to type a completely custom topic */}
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
                          <input className="cyber-input" value={customTopicInput} onChange={e => setCustomTopicInput(e.target.value)} placeholder="Type custom topic..." style={{ flex: 1, margin: 0 }}/>
                          <button className="cyber-button" onClick={() => handleTopicSelection(customTopicInput)} disabled={!customTopicInput.trim()} style={{ padding: '0 20px', background: '#38bdf8', color: '#000', margin: 0 }}>GO</button>
@@ -893,9 +877,8 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
         if (!currentTranscript.trim()) return;
         setIsRegenerating(true);
         try {
-            const app = await Client.connect(SPACE_URL);
             const d = setup.userDialect || "General";
-            const cRes = await app.predict("/generate_clarifications", [currentTranscript, d]);
+            const cRes = await proxyPredict("/generate_clarifications", [currentTranscript, d]);
             let cText = cRes.data[0];
             try { cText = JSON.parse(cText).clarification || cText; } catch {}
             setCurrentClarification(cText); setIsRegenerating(false);
@@ -915,23 +898,22 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
         setMessages(p => [...p, { sender: 'user', text: currentTranscript, isAudio: !isEdited }]);
         setPhase("responding"); 
         try {
-            const app = await Client.connect(SPACE_URL);
             const d = setup.userDialect || "General";
             const clarSource = isEdited ? "User/AI Hybrid" : "AI";
-            let wrappedAudio = null;
+            let base64Audio = null;
             if (currentAudio) {
                  const audioFile = new File([currentAudio], `echo_${Date.now()}.wav`, { type: "audio/wav" });
-                 wrappedAudio = handle_file(audioFile);
+                 base64Audio = await fileToBase64(audioFile);
             }
             const finalOperatorId = operator || "0xUnknown";
 
-            await app.predict("/check_and_submit_logic", [
+            await proxyPredict("/check_and_submit_logic", [
                 currentTranscript, d, "", currentClarification, "Conversational", "Chat", "Interactive Chat Session",
-                "Game: Listener", clarSource, finalOperatorId, wrappedAudio, false
+                "Game: Listener", clarSource, finalOperatorId, base64Audio, false
             ]);
             
             const prompt = `User said: "${currentTranscript}". Meaning: "${currentClarification}". You are Echo. Reply naturally with a short follow-up question.`;
-            const res = await app.predict("/generate_mission", [prompt]); 
+            const res = await proxyPredict("/generate_mission", [prompt]); 
             let replyText = "";
             const rawData = res.data[0];
             if (typeof rawData === "string") { try { const parsed = JSON.parse(rawData); replyText = parsed.text || rawData; } catch { replyText = rawData; } }
@@ -948,12 +930,14 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
     };
 
     const handleAudioStop = async (blobUrl, blob) => {
+        let base64Audio = null;
+        try { base64Audio = await fileToBase64(blob); } catch(e) {}
+        
         if (phase === "onboarding") {
             setPhase("processing"); 
             try {
-                const app = await Client.connect(SPACE_URL);
                 const d = setup.userDialect || "General";
-                const tRes = await app.predict("/transcribe_check", [blob, d]);
+                const tRes = await proxyPredict("/transcribe_check", [base64Audio, d]);
                 const text = tRes.data[0];
                 setCurrentTranscript(text); if(!pronunciation) setPronunciation(text); setPhase("onboarding"); 
             } catch (e) { setPhase("onboarding"); }
@@ -961,12 +945,11 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
         }
         setPhase("processing"); setCurrentAudio(blob); setIsEdited(false); 
         try {
-            const app = await Client.connect(SPACE_URL);
             const d = setup.userDialect || "General";
-            const tRes = await app.predict("/transcribe_check", [blob, d]);
+            const tRes = await proxyPredict("/transcribe_check", [base64Audio, d]);
             const text = tRes.data[0];
             setCurrentTranscript(text);
-            const cRes = await app.predict("/generate_clarifications", [text, d]);
+            const cRes = await proxyPredict("/generate_clarifications", [text, d]);
             let cText = cRes.data[0];
             try { cText = JSON.parse(cText).clarification || cText; } catch {}
             setCurrentClarification(cText); setPhase("verify");
@@ -981,8 +964,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
                 <button className="back-icon" onClick={onBack} style={{background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:'20px', padding:'0'}} title="Back to Menu">🏠←</button>
                 <div className={`status-dot ${status === "recording" ? "pulsing-red" : ""}`}></div>
                 <h3 style={{margin: 0, color: '#f8fafc', flex: 1}}>ECHO {nickname ? `| ${nickname.toUpperCase()}` : ""}</h3>
-                
-                {/* 🟢 FIX: Exact same Reset button styling as SharedGameLayout */}
                 <button onClick={handleReset} style={{background:'rgba(0,0,0,0.3)', border:'none', borderRadius:'50%', width:'40px', height:'30px', cursor:'pointer', fontSize:'16px', color:'#94a3b8', flexShrink: 0}} title="Reset Identity">🗑️</button>
             </div>
             {phase === "setup" ? (
@@ -1060,7 +1041,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
                             </div>
                         )}
                         
-                        {/* 🟢 FIX: Call the CustomEvent to open the Feedback Modal */}
                         <div style={{textAlign: 'center', marginTop: '15px', paddingBottom: '10px'}}>
                             <button onClick={() => window.dispatchEvent(new CustomEvent('open-feedback'))} style={{background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer'}}>
                                 💬 Submit Secure Feedback
@@ -1073,7 +1053,6 @@ function GameActiveListener({ userKey, setXP, dialects, setDialects, onBack, ope
     );
 }
 
-// ... (KEEP GameConvoBridge UNCHANGED) ...
 // ==========================================
 // 🌉 GAME 5: CONVO BRIDGE (Turn-Based Live Translation)
 // ==========================================
@@ -1104,15 +1083,16 @@ function GameConvoBridge({ userKey, dialects, onBack }) {
         const sourceDialect = speaker === "P1" ? p1Dialect : p2Dialect;
         const targetDialect = speaker === "P1" ? p2Dialect : p1Dialect;
 
-        try {
-            const app = await getClient(); // Using your singleton client
-            
+        try {            
+            let base64Audio = null;
+            try { base64Audio = await fileToBase64(blob); } catch(e){}
+
             // 1. Transcribe the audio
-            const tRes = await app.predict("/transcribe_check", [blob, sourceDialect]);
+            const tRes = await proxyPredict("/transcribe_check", [base64Audio, sourceDialect]);
             const originalText = tRes.data[0];
             
             // 2. Translate to the other player's dialect
-            const transRes = await app.predict("/translate_peer", [originalText, sourceDialect, targetDialect]);
+            const transRes = await proxyPredict("/translate_peer", [originalText, sourceDialect, targetDialect]);
             const translatedText = transRes.data[0];
 
             // 3. Update the chat log
@@ -1220,8 +1200,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
         
         const checkMatch = async () => {
             try {
-                const app = await getClient(); // Use shared client
-                const res = await app.predict("/check_match", [operator]);
+                const res = await proxyPredict("/check_match", [operator]);
                 const data = JSON.parse(res.data[0]);
                 
                 if (data.status === "matched") {
@@ -1242,9 +1221,8 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
         
         const pollMessages = async () => {
             try {
-                const app = await getClient(); // Use shared client
                 const currentLength = chatLogRef.current.length;
-                const res = await app.predict("/relay_poll", [roomCode, currentLength]);
+                const res = await proxyPredict("/relay_poll", [roomCode, currentLength]);
                 const newMsgs = JSON.parse(res.data[0]);
                 
                 if (newMsgs && newMsgs.length > 0) {
@@ -1261,8 +1239,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
     const handleStartSearch = async () => {
         setPhase("searching");
         try {
-            const app = await Client.connect(SPACE_URL);
-            await app.predict("/join_queue", [operator, myDialect]);
+            await proxyPredict("/join_queue", [operator, myDialect]);
         } catch (e) {
             alert("Failed to join network. Retrying...");
             setPhase("setup");
@@ -1272,8 +1249,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
     const handleCancelSearch = async () => {
         setPhase("setup");
         try {
-            const app = await Client.connect(SPACE_URL);
-            await app.predict("/leave_queue", [operator]);
+            await proxyPredict("/leave_queue", [operator]);
         } catch (e) {}
     };
 
@@ -1281,8 +1257,8 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
         setTranscribedText("⏳ Transcribing audio...");
         setIsEditing(true);
         try {
-            const app = await Client.connect(SPACE_URL);
-            const res = await app.predict("/transcribe_check", [blob, myDialect]);
+            let base64Audio = await fileToBase64(blob);
+            const res = await proxyPredict("/transcribe_check", [base64Audio, myDialect]);
             setTranscribedText(res.data[0]);
         } catch (e) {
             setTranscribedText("Error transcribing. Please type your message.");
@@ -1295,8 +1271,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
         if (!transcribedText.trim()) return;
         setIsSending(true);
         try {
-            const app = await Client.connect(SPACE_URL);
-            await app.predict("/relay_send", [roomCode, operator, transcribedText, myDialect, partnerDialect]);
+            await proxyPredict("/relay_send", [roomCode, operator, transcribedText, myDialect, partnerDialect]);
             setIsEditing(false);
             setTranscribedText("");
         } catch (e) {
@@ -1309,22 +1284,20 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
     if (phase === "setup") {
         return (
             <div className="game-layout">
-                {/* 🟢 FIX: Ensure the entire setup screen can scroll vertically on small devices */}
-                <div className="setup-screen" style={{ textAlign: 'center', padding: '15px', overflowY: 'auto', height: '100%' }}>
-                    <div className="mission-card" style={{padding: '30px', textAlign: 'center'}}>
-                        <div className="icon-large">📡</div>
-                        <h2 style={{color: '#f97316'}}>GLOBAL NETWORK</h2>
-                        <p style={{fontSize: '12px', color: '#cbd5e1', marginBottom: '20px'}}>Join the pool to securely match with another Operator.</p>
-                        
-                        <label style={{fontSize: '10px', color: '#94a3b8'}}>YOUR DIALECT:</label>
-                        <select className="cyber-input" value={myDialect} onChange={e => setMyDialect(e.target.value)} style={{marginBottom: '30px', color: '#f97316'}}>
-                            {dialects.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
+                <div className="mission-card" style={{padding: '30px', textAlign: 'center'}}>
+                    <div className="icon-large">📡</div>
+                    <h2 style={{color: '#f97316'}}>GLOBAL NETWORK</h2>
+                    <p style={{fontSize: '12px', color: '#cbd5e1', marginBottom: '20px'}}>Join the pool to securely match with another Operator.</p>
+                    
+                    <label style={{fontSize: '10px', color: '#94a3b8'}}>YOUR DIALECT:</label>
+                    <select className="cyber-input" value={myDialect} onChange={e => setMyDialect(e.target.value)} style={{marginBottom: '30px', color: '#f97316'}}>
+                        {dialects.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
 
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
-                            <button className="cyber-button" onClick={handleStartSearch} style={{flex: 2, background: '#f97316', color: '#000'}}>FIND PARTNER</button>
-                        </div>
+                    <div style={{display: 'flex', gap: '10px'}}>
+			<button className="cyber-button" onClick={handleStartSearch} style={{flex: 2, background: '#f97316', color: '#000'}}>FIND PARTNER</button>
+                        <button className="cancel-btn" onClick={onBack} style={{flex: 1}}>BACK</button>
+                        
                     </div>
                 </div>
             </div>
@@ -1403,7 +1376,7 @@ function GameHumanConvo({ userKey, operator, dialects, onBack }) {
     );
 }
 
-// ... (KEEP SharedGameLayout UNCHANGED) ...
+
 // ==========================================
 // ⚙️ SHARED GAME LAYOUT 
 // ==========================================
@@ -1449,12 +1422,12 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
         setStep("ANALYZING");
         try {
             const blob = await fetch(mediaBlob).then(r => r.blob());
-            const app = await Client.connect(SPACE_URL);
+            const base64Audio = await fileToBase64(blob);
             const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            const tRes = await app.predict("/transcribe_check", [blob, d]);
+            const tRes = await proxyPredict("/transcribe_check", [base64Audio, d]);
             const text = tRes.data[0];
             setTranscribed(text);
-            const cRes = await app.predict("/generate_clarifications", [text, d]);
+            const cRes = await proxyPredict("/generate_clarifications", [text, d]);
             parseClarification(cRes.data[0]);
             setStep("REVIEW");
         } catch (e) { 
@@ -1474,9 +1447,8 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
         if (!transcribed.trim()) return;
         setIsRegenerating(true);
         try {
-            const app = await Client.connect(SPACE_URL);
             const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            const res = await app.predict("/generate_clarifications", [transcribed, d]);
+            const res = await proxyPredict("/generate_clarifications", [transcribed, d]);
             parseClarification(res.data[0]);
             setIsRegenerating(false);
         } catch (e) { setClarification("Failed to regenerate."); setIsRegenerating(false); }
@@ -1493,20 +1465,19 @@ function SharedGameLayout({ title, mission, recStatus, startRec, stopRec, mediaB
 
         setStep("MINTING");
         try {
-            const app = await Client.connect(SPACE_URL);
             const d = dialect === "+ Add New Dialect" ? customD : dialect;
-            let wrappedAudio = null;
+            let base64Audio = null;
             if (mediaBlob) {
                 try {
                     const blob = await fetch(mediaBlob).then(r => r.blob());
                     const audioFile = new File([blob], `capture_${Date.now()}.wav`, { type: "audio/wav" });
-                    wrappedAudio = handle_file(audioFile);
+                    base64Audio = await fileToBase64(audioFile);
                 } catch (e) {}
             }
             const finalOperatorId = operator || "0xUnknown";
-            await app.predict("/check_and_submit_logic", [
+            await proxyPredict("/check_and_submit_logic", [
                 transcribed, d, customD, clarification, tone, context, pragmatics,
-                sourceTag || "Unknown Game", "User/AI Hybrid", finalOperatorId, wrappedAudio, false
+                sourceTag || "Unknown Game", "User/AI Hybrid", finalOperatorId, base64Audio, false
             ]);
             setXP(p => p + 50);
             if (customD && dialect === "+ Add New Dialect") {
