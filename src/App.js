@@ -341,19 +341,9 @@ function App() {
 
     const checkSyncStatus = async () => {
         try {
-            const response = await fetch('/api/gradio-proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    endpoint: "check_cloud_sync", 
-                    args: [] 
-                })
-            });
-
-            const result = await response.json();
-            if (result.error) throw new Error(result.error);
-            
-            setCloudStatus(result.data[0]); 
+            // 🟢 Uses the centralized proxy helper
+            const res = await proxyPredict("/check_cloud_sync"); 
+            setCloudStatus(res.data[0]); 
         } catch (err) {
             console.error("Sync check failed:", err);
             setCloudStatus("🔴 SYNC OFFLINE");
